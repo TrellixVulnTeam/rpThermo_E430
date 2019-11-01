@@ -59,6 +59,12 @@ Finally, make sure that you give the python scripts execution permission:
 chmod 755 *.py
 ```
 
+## Running the service
+
+```
+docker run --network host -p 8995:8995 brsynth/rpthermo
+```
+
 ## Running the tests
 
 TODO

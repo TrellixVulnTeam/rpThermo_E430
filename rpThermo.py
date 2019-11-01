@@ -17,81 +17,6 @@ from ast import literal_eval
 import component_contribution
 
 
-## Class to generate the cache
-#
-# Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the
-#the other steps. These should be called only when the files have changes
-class rpCache:
-    ## Cache constructor
-    #
-    # @param self The object pointer
-    # @param inputPath The path to the folder that contains all the input/output files required
-    def __init__(self):
-        #given by Thomas
-        self.logger = logging.getLogger(__name__)
-        self.logger.info('Started instance of rpCache')
-        self.convertMNXM = {'MNXM162231': 'MNXM6',
-                'MNXM84': 'MNXM15',
-                'MNXM96410': 'MNXM14',
-                'MNXM114062': 'MNXM3',
-                'MNXM145523': 'MNXM57',
-                'MNXM57425': 'MNXM9',
-                'MNXM137': 'MNXM588022'}
-        self.deprecatedMNXM_mnxm = {}
-        self.deprecatedMNXR_mnxr = {}
-
-
-    ## Function exctract the dG of components
-    #
-    #  This function parses a file from component analysis and uses KEGG id's. This means that to use precalculated
-    # values in this file a given ID must have a KEGG id listed here
-    #
-    #  @param self Object pointer
-    #  @param cc_compounds_path cc_compounds.json.gz file path
-    #  @param alberty_path alberty.json file path
-    #  @param compounds_path compounds.csv file path
-    def kegg_dG(self,
-                cc_compounds_path,
-                alberty_path,
-                compounds_path):
-        cc_alberty = {}
-        ########################## compounds ##################
-        #contains the p_kas and molecule decomposition
-        cid_comp = {}
-        with open(compounds_path) as f:
-            c = csv.reader(f, delimiter=',', quotechar='"')
-            next(c)
-            for row in c:
-                cid_comp[row[-1].split(':')[1]] = {}
-                cid_comp[row[-1].split(':')[1]]['atom_bag'] = literal_eval(row[3])
-                cid_comp[row[-1].split(':')[1]]['p_kas'] = literal_eval(row[4])
-                cid_comp[row[-1].split(':')[1]]['major_ms'] = int(literal_eval(row[6]))
-                cid_comp[row[-1].split(':')[1]]['number_of_protons'] = literal_eval(row[7])
-                cid_comp[row[-1].split(':')[1]]['charges'] = literal_eval(row[8])
-        ####################### cc_compounds ############
-        #TODO: seems like the new version of equilibrator got rid of this file... need to update the function
-        #to take as input the new file --> i.e. the JSON input
-        #notFound_cc = []
-        gz_file = gzip.open(cc_compounds_path, 'rb')
-        f_c = gz_file.read()
-        c = json.loads(f_c)
-        for cd in c:
-            #find the compound descriptions
-            try:
-                cd.update(cid_comp[cd['CID']])
-            except KeyError:
-                pass
-            #add the CID
-            #if not mnxm in cc_alberty:
-            if not cd['CID'] in cc_alberty:
-                cc_alberty[cd['CID']] = {}
-                if not 'alberty' in cc_alberty[cd['CID']]:
-                    cc_alberty[cd['CID']]['alberty'] = [cd]
-                else:
-                    cc_alberty[cd['CID']]['alberty'].append(cd)
-        return cc_alberty
-
-
 class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
     metabolic pathways output from RP2paths and thus RetroPath2.0
@@ -135,48 +60,11 @@ class rpThermo:
         self.debye_huckel = self.DH_alpha*self.ionic_strength**(0.5)/(1.0+self.DH_beta*self.ionic_strength**(0.5))
         #temporarely save the calculated dG's
         self.calculated_dG = {}
-        if not self._loadCache():
-            raise ValueError
 
 
     ######################################################
     ################ PRIVATE FUNCTIONS ###################
     ######################################################
-
-
-    ##
-    #
-    #
-    def _loadCache(self, fetchInputFiles=False):
-        dirname = os.path.dirname(os.path.abspath( __file__ ))
-        ###################### Fetch the files if necessary ######################
-        #cc_compounds.json.gz
-        if not os.path.isfile(dirname+'/input_cache/cc_compounds.json.gz') or fetchInputFiles:
-            urllib.request.urlretrieve('TODO',
-                    dirname+'/input_cache/cc_compounds.json.gz')
-        #alberty.json
-        if not os.path.isfile(dirname+'/input_cache/alberty.json') or fetchInputFiles:
-            urllib.request.urlretrieve('TODO',
-                    dirname+'/input_cache/alberty.json')
-        #compounds.csv
-        if not os.path.isfile(dirname+'/input_cache/compounds.csv') or fetchInputFiles:
-            urllib.request.urlretrieve('TODO',
-                    dirname+'/input_cache/compounds.csv')
-        #cc_preprocess.npz
-        if not os.path.isfile(dirname+'/cache/cc_preprocess.npz') or fetchInputFiles:
-            urllib.request.urlretrieve('TODO',
-                    dirname+'/cache/compounds.csv')
-        ###################### Populate the cache #################################
-        #kegg_dG.pickle
-        if not os.path.isfile(dirname+'/cache/kegg_dG.pickle'):
-            rpcache = rpCache()
-            pickle.dump(rpcache.kegg_dG(dirname+'/input_cache/cc_compounds.json.gz',
-                dirname+'/input_cache/alberty.json',
-                dirname+'/input_cache/compounds.csv'),
-                open(dirname+'/cache/kegg_dG.pickle', 'wb'))
-        self.kegg_dG = pickle.load(open(dirname+'/cache/kegg_dG.pickle', 'rb'))
-        self.cc_preprocess = np.load(dirname+'/cache/cc_preprocess.npz')
-        return True
 
 
     ## Select a thermodynamics score from the dataset
@@ -436,8 +324,8 @@ class rpThermo:
         cid = None
         physioParameter = None #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc.... TODO: Next step is to have the user input his own
         #Try to find your species in the already calculated species
-        smiles = species_annot.getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('smiles').getChild(0).toXMLString()
-        inchi = species_annot.getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('inchi').getChild(0).toXMLString()
+        smiles = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('smiles').getChild(0).toXMLString()
+        inchi = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('inchi').getChild(0).toXMLString()
         #TODO: add the structure check
         ################### use already calculated ##########################
         if inchi in self.calculated_dG:
@@ -558,13 +446,13 @@ class rpThermo:
             write_uncertainty = 0.0
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
             G = np.zeros((self.cc_preprocess['C3'].shape[0], 1)) 
-        ibisba_annot = species_annot.getChild('RDF').getChild('Ibisba').getChild('ibisba')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_m units="kj_per_mol" value="'+str(write_dfG_prime_m)+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+        brsynth_annot = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(write_dfG_prime_m)+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
         return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later 
 
 
@@ -658,36 +546,36 @@ class rpThermo:
                     X_path += X
                     G_path += G
             #add the reaction thermo to the sbml
-            #ibisba_annot = member.getIdRef().getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba')
+            #brsynth_annot = member.getIdRef().getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
             reac = rpsbml.model.getReaction(member.getIdRef())
             reac_annot = reac.getAnnotation()
-            ibisba_annot = reac_annot.getChild('RDF').getChild('Ibisba').getChild('ibisba')
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_o units="kj_per_mol" value="'+str(reaction_dfG_prime_o)+'" /> </ibisba:ibisba>')
-            ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_m units="kj_per_mol" value="'+str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration))+'" /> </ibisba:ibisba>')
-            ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </ibisba:ibisba>')
-            ibisba_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+            brsynth_annot = reac_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
+            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(reaction_dfG_prime_o)+'" /> </brsynth:brsynth>')
+            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
+            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration))+'" /> </brsynth:brsynth>')
+            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
+            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </brsynth:brsynth>')
+            brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
             '''
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
-            #rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_m))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration)))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_reaction, G_reaction)))
+            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
+            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
+            #rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_m))
+            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration)))
+            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_reaction, G_reaction)))
             '''
         #add the pathway thermo to the sbml
-        ibisba_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_prime_m units="kj_per_mol" value="'+str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration))+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<ibisba:ibisba xmlns:ibisba="http://ibisba.eu"> <ibisba:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </ibisba:ibisba>')
-        ibisba_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+        brsynth_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration))+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
+        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </brsynth:brsynth>')
+        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
         '''
-        rp_pathway.getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_o').addAttr('value', str(pathway_dfG_prime_o))
-        #rp_pathway.getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_m))
-        rp_pathway.getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration)))
-        rp_pathway.getAnnotation().getChild('RDF').getChild('Ibisba').getChild('ibisba').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_path, G_path)))
+        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(pathway_dfG_prime_o))
+        #rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_m))
+        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration)))
+        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_path, G_path)))
         '''
 
 
@@ -706,27 +594,3 @@ class rpThermo:
         """
         return False
 
-"""
-if __name__ == "__main__":
-    #READ THE TAR.XZ FILE
-    rpsbml_paths = {}
-    tar = tarfile.open('tests/testTHERMOin.tar.xz') #TODO: create this
-    rpsbml_paths = {}
-    for member in tar.getmembers():
-        rpsbml_paths[member.name] = rpSBML.rpSBML(member.name,libsbml.readSBMLFromString(tar.extractfile(member).read().decode("utf-8")))
-    ###
-    rpthermo = rpThermo()
-    for rpsbml_name in rpsbml_paths:
-        rpthermo.pathway_drG_prime_m(rpsbml_paths[rpsbml_name])
-    #WRITE THE TAR.XZ FILE
-    with tarfile.open('testFBAout.tar.xz', 'w:xz') as tf:
-        for rpsbml_name in rpsbml_paths:
-            data = libsbml.writeSBMLToString(rpsbml_paths[rpsbml_name].document).encode('utf-8')
-            fiOut = BytesIO(data)
-            info = tarfile.TarInfo(rpsbml_name)
-            info.size = len(data)
-            tf.addfile(tarinfo=info, fileobj=fiOut)
-"""
-
-if __name__== "__main__":
-    rpThermo()
