@@ -483,8 +483,6 @@ class rpThermo:
             reaction = rpsbml.model.getReaction(member.getIdRef())
             #react
             for pro in reaction.getListOfProducts():
-                #rpsbml.model.getSpecies(pro.species).getAnnotation()
-                #print(rpsbml.model.getSpecies(pro.species).getAnnotation().toXMLString())
                 try:
                     if not pro.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
@@ -556,13 +554,6 @@ class rpThermo:
             brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
             tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </brsynth:brsynth>')
             brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-            '''
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(reaction_dfG_prime_o))
-            #rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_m))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration)))
-            rpsbml.model.getReaction(member.getIdRef()).getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_reaction, G_reaction)))
-            '''
         #add the pathway thermo to the sbml
         brsynth_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </brsynth:brsynth>')
@@ -571,12 +562,6 @@ class rpThermo:
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        '''
-        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_o').addAttr('value', str(pathway_dfG_prime_o))
-        #rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_m))
-        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_prime_m').addAttr('value', str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration)))
-        rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('dG_uncert').addAttr('value', str(self.dG0_uncertainty(X_path, G_path)))
-        '''
 
 
     #TODO: implement to return if the reaction is balanced and the reversibility index 
