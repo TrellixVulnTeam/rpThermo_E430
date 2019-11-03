@@ -6,6 +6,7 @@ import gzip
 import json
 import logging
 import numpy as np
+from ast import literal_eval
 
 
 ## Class to generate the cache
@@ -49,19 +50,19 @@ class rpCache:
             urllib.request.urlretrieve('TODO',
                     dirname+'/input_cache/alberty.json')
         #compounds.csv
-        if not os.path.isfile(dirname+'/input_cache/compounds.csv') or fetchInputFiles:
+        if not os.path.isfile(dirname+'/input_cache/rr_compounds.csv') or fetchInputFiles:
             urllib.request.urlretrieve('TODO',
                     dirname+'/input_cache/compounds.csv')
         #cc_preprocess.npz
         if not os.path.isfile(dirname+'/cache/cc_preprocess.npz') or fetchInputFiles:
             urllib.request.urlretrieve('TODO',
-                    dirname+'/cache/compounds.csv')
+                    dirname+'/cache/cc_preprocess.npz')
         ###################### Populate the cache #################################
         #kegg_dG.pickle
         if not os.path.isfile(dirname+'/cache/kegg_dG.pickle'):
-            pickle.dump(self.kegg_dG(dirname+'/input_cache/cc_compounds.json.gz',
+            pickle.dump(self.keggdG(dirname+'/input_cache/cc_compounds.json.gz',
                 dirname+'/input_cache/alberty.json',
-                dirname+'/input_cache/compounds.csv'),
+                dirname+'/input_cache/rr_compounds.csv'),
                 open(dirname+'/cache/kegg_dG.pickle', 'wb'))
         self.kegg_dG = pickle.load(open(dirname+'/cache/kegg_dG.pickle', 'rb'))
         self.cc_preprocess = np.load(dirname+'/cache/cc_preprocess.npz')
@@ -78,7 +79,7 @@ class rpCache:
     #  @param cc_compounds_path cc_compounds.json.gz file path
     #  @param alberty_path alberty.json file path
     #  @param compounds_path compounds.csv file path
-    def kegg_dG(self,
+    def keggdG(self,
                 cc_compounds_path,
                 alberty_path,
                 compounds_path):
