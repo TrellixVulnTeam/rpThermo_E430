@@ -31,6 +31,7 @@ from pkg_resources import resource_stream
 import pandas as pd
 from collections import defaultdict
 
+
 '''
 from component_contribution.databases import databases
 from component_contribution.mol_utils import atom_bag_and_charge

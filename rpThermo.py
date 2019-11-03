@@ -16,6 +16,7 @@ from ast import literal_eval
 #local package
 import component_contribution
 
+logging.basicConfig(level=logging.ERROR)
 
 class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
@@ -60,6 +61,17 @@ class rpThermo:
         self.debye_huckel = self.DH_alpha*self.ionic_strength**(0.5)/(1.0+self.DH_beta*self.ionic_strength**(0.5))
         #temporarely save the calculated dG's
         self.calculated_dG = {}
+        self.kegg_dG = {}
+        self.userMNX_speXref = {
+                'MNXM1': {'kegg': 'C00080'}, 
+                'MNXM4': {'kegg': 'C00007'}, 
+                'MNXM22': {'kegg': 'C00027'}, 
+                'MNXM13': {'kegg': 'C00011'}, 
+                'MNXM8': {'kegg': 'C00003'}, 
+                'MNXM15': {'kegg': 'C00014'},
+                'MNXM2': {'kegg': 'C00001'},
+                'MNXM12': {'kegg': 'C00010'},
+                }
 
 
     ######################################################
@@ -75,19 +87,20 @@ class rpThermo:
     #
     def _select_dG(self, cid):
         if cid in self.kegg_dG:
-            if 'component_contribution' in self.kegg_dG[cid] and self.kegg_dG[cid]['component_contribution']:
-                ####### select the smallest one
-                '''
-                if len(self.kegg_dG[cid]['component_contribution'])==1:
-                    return self.kegg_dG[cid]['component_contribution'][0]['compound_index'], self.kegg_dG[cid]['component_contribution'][0]['group_vector'], self.kegg_dG[cid]['component_contribution'][0]['pmap']['species']
-                else:
-                    #select the lowest CID and make sure that there
-                    toRet = {'CID': 'C99999'}
-                    for cmp_dict in self.kegg_dG[cid]['component_contribution']:
-                        if int(cmp_dict['CID'][1:])<int(toRet['CID'][1:]):
-                            toRet = cmp_dict
-                    return toRet['compound_index'], toRet['group_vector'], toRet['pmap']['species']
-                '''
+            #OLD#if 'component_contribution' in self.kegg_dG[cid] and self.kegg_dG[cid]['component_contribution']:
+            ####### select the smallest one
+            '''
+            if len(self.kegg_dG[cid]['component_contribution'])==1:
+                return self.kegg_dG[cid]['component_contribution'][0]['compound_index'], self.kegg_dG[cid]['component_contribution'][0]['group_vector'], self.kegg_dG[cid]['component_contribution'][0]['pmap']['species']
+            else:
+                #select the lowest CID and make sure that there
+                toRet = {'CID': 'C99999'}
+                for cmp_dict in self.kegg_dG[cid]['component_contribution']:
+                    if int(cmp_dict['CID'][1:])<int(toRet['CID'][1:]):
+                        toRet = cmp_dict
+                return toRet['compound_index'], toRet['group_vector'], toRet['pmap']['species']
+            '''
+            try:
                 ###### select the one with the most information
                 #return the smallest one that has all the information required
                 for cmp_d in sorted(self.kegg_dG[cid]['component_contribution'], key=lambda k: int(k['CID'][1:])):
@@ -114,16 +127,21 @@ class rpThermo:
                     #exit the component_conribution condition if all are none
                 #    continue
                 return compound_index, group_vector, pmap_species
+            except KeyError:
             #if you cannot find the component in the component_contribution then select the alberty dataset
-            elif 'alberty' in self.kegg_dG[cid] and self.kegg_dG[cid]['alberty']:
-                if len(self.kegg_dG[cid]['alberty'])>=1:
-                    return None, None, self.kegg_dG[cid]['alberty'][0]['species']
-                else:
-                    self.logger.warning('Alberty and component_contribution species are empty')
+            #OLD#elif 'alberty' in self.kegg_dG[cid] and self.kegg_dG[cid]['alberty']:
+                try:
+                    if len(self.kegg_dG[cid]['alberty'])>=1:
+                        return None, None, self.kegg_dG[cid]['alberty'][0]['pmap']['species']
+                    else:
+                        self.logger.warning('Alberty and component_contribution species are empty')
+                        raise KeyError
+                except KeyError:
+                    self.logger.warning('There are no valid dictionnary of precalculated dG for '+str(cid))
                     raise KeyError
-            else:
-                self.logger.warning('There are no valid dictionnary of precalculated dG for '+str(cid))
-                raise KeyError
+            #OLD#else:
+            #    self.logger.warning('There are no valid dictionnary of precalculated dG for '+str(cid))
+            #    raise KeyError
         else:
             self.logger.warning('There are no '+str(cid)+' in self.kegg_dG')
             raise KeyError
@@ -154,18 +172,18 @@ class rpThermo:
         elif srct_type=='inchi':
             molecule = pybel.readstring('inchi', srct_string)
         else:
-            self.logger.error('Must input a valid molecular structure string')
+            self.logger.warning('Must input a valid molecular structure string')
             raise LookupError
         inchi = molecule.write('inchi').strip()
         inchi_key = molecule.write("inchikey").strip()
         if not inchi_key:
-            self.logger.error('Molecule with no explicit structure: '+str(srct_string))
+            self.logger.warning('Molecule with no explicit structure: '+str(srct_string))
             raise LookupError
         #compute pKas
         try:
             p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
         except:
-            self.logger.error('ChemAxon has encountered an error')
+            self.logger.warning('ChemAxon has encountered an error')
             raise LookupError
         p_kas = sorted([pka for pka in p_kas if self.min_pH<pka<self.max_pH], reverse=True)
         molecule = pybel.readstring('smi', major_ms_smiles)
@@ -184,7 +202,7 @@ class rpThermo:
         try:
             g = self.decomposer.smiles_to_groupvec(molecule.write('smiles')).as_array()
         except component_contribution.inchi2gv.GroupDecompositionError as gde:
-            self.logger.error('Cannot decompose SMILES: '+str(srct_string))
+            self.logger.warning('Cannot decompose SMILES: '+str(srct_string))
             #return None, None, None
             raise LookupError
         ### using equilibrator training data
@@ -316,7 +334,7 @@ class rpThermo:
     ## Calculate a  species dG0_prime_o and its uncertainty
     #
     #
-    def species_dfG_prime_o(self, species_annot, stoichio):
+    def species_dfG_prime_o(self, species_annot, stoichio, species_mnxm=None):
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
@@ -339,58 +357,72 @@ class rpThermo:
         else:
             ################## use the KEGG id for precalculated ######################
             #if not try to find it in cc_preprocess
-            cids = []
+            cid = []
+            mnxm = []
             bag = species_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
             for i in range(bag.getNumChildren()):
                 str_annot = bag.getChild(i).getAttrValue(0)
                 if str_annot.split('/')[-2]=='kegg.compound':
-                    cids.append(str_annot.split('/')[-1])
-            cid = [i for i in cids if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
-            if len(cid)==1:
-                cid = cid[0]
-            #TODO: sort them to have the lowest KEGG CID used
-            elif len(cid)>1:
-                cid = sorted(cid)[0]
-                self.logger.warning('There are more than one results, using the first one '+str(sorted(cid)))
+                    cid.append(str_annot.split('/')[-1])
+                if str_annot.split('/')[-2]=='metanetx.chemical':
+                    mnxm.append(str_annot.split('/')[-1])
+            #### KEGG ###
+            cid = [i for i in cid if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
+            if len(cid)>=1:
+                cid = sorted(cid, key=lambda x: int(x.replace('C', '')))[0]
             else:
-                cid = None
-            if cid:
-                #BUG or overlooked? overwrite H+ and H2O dfG_prime_m
-                if not cid=='C00080': #ignore H+ for the moment
+                #cid = None
+                #### MNXM ####
+                if len(mnxm)>=1:
+                    mnxm = sorted(mnxm, key=lambda x: (len(x), int(x.replace('MNXM', ''))))[0]
                     try:
-                        dfG_prime_o, X, G, physioParameter = self.cmp_dfG_prime_o(
-                                cid, 
-                                stoichio)
+                        cid = self.userMNX_speXref[mnxm]['kegg']
                     except KeyError:
-                        #TODO: seperate this part in a function instead of repeating the code
-                        #calculate using the structure, preferring the InChI over SMILES
-                        if inchi:
-                            try:
-                                dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                        'inchi', 
-                                        inchi, 
-                                        stoichio)
-                                self.calculated_dG[smiles] = {}
-                                self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                                self.calculated_dG[smiles]['X'] = X
-                                self.calculated_dG[smiles]['G'] = G
-                            except (KeyError, LookupError):
-                                self.logger.warning('Cannot use InChI to calculate the thermodynamics')
-                                pass
-                        #try for inchi
-                        if smiles and dfG_prime_o==None:
-                            try:
-                                dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                        'smiles',
-                                        smiles,
-                                        stoichio)
-                                self.calculated_dG[smiles] = {}
-                                self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                                self.calculated_dG[smiles]['X'] = X
-                                self.calculated_dG[smiles]['G'] = G
-                            except (KeyError, LookupError):
-                                self.logger.warning('Cannot use SMILES to calculate the thermodynamics')
-                                raise KeyError
+                        cid = None
+                elif not species_mnxm==None:
+                    try:
+                        cid = self.userMNX_speXref[species_mnxm]['kegg']
+                    except KeyError:
+                        cid = None 
+                else:
+                    mnxm = None
+                    cid = None
+            if cid:
+                try:
+                    dfG_prime_o, X, G, physioParameter = self.cmp_dfG_prime_o(
+                            cid, 
+                            stoichio)
+                except KeyError:
+                    #TODO: seperate this part in a function instead of repeating the code
+                    #calculate using the structure, preferring the InChI over SMILES
+                    if inchi:
+                        try:
+                            dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
+                                    'inchi', 
+                                    inchi, 
+                                    stoichio)
+                            self.calculated_dG[smiles] = {}
+                            self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
+                            self.calculated_dG[smiles]['X'] = X
+                            self.calculated_dG[smiles]['G'] = G
+                        except (KeyError, LookupError):
+                            self.logger.warning('Cannot use InChI to calculate the thermodynamics')
+                            pass
+                    #try for inchi
+                    if smiles and dfG_prime_o==None:
+                        try:
+                            dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
+                                    'smiles',
+                                    smiles,
+                                    stoichio)
+                            self.calculated_dG[smiles] = {}
+                            self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
+                            self.calculated_dG[smiles]['X'] = X
+                            self.calculated_dG[smiles]['G'] = G
+                        except (KeyError, LookupError):
+                            self.logger.warning('Cannot use SMILES to calculate the thermodynamics')
+                            self.logger.error('Could not calculate the thermodynamics of '+str(cid)+' ('+str(inchi)+')')
+                            raise KeyError
             ############## use the structure #########################
             else:
                 if cid:
@@ -487,7 +519,8 @@ class rpThermo:
                     if not pro.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
                                 rpsbml.model.getSpecies(pro.species).getAnnotation(), 
-                                float(pro.stoichiometry))
+                                float(pro.stoichiometry),
+                                pro.species.split('__')[0])
                         already_calculated[pro.species] = {}
                         already_calculated[pro.species]['dfG_prime_o'] = dfG_prime_o
                         already_calculated[pro.species]['X'] = X
@@ -499,7 +532,7 @@ class rpThermo:
                         G = already_calculated[pro.species]['G']
                         concentration = already_calculated[pro.species]['concentration']
                 except (KeyError, LookupError):
-                    self.logger.warning('Failed to calculate the thermodynamics for '+str(pro.species))
+                    self.logger.error('Failed to calculate the thermodynamics for '+str(pro.species))
                     continue
                 reaction_stoichio.append(float(pro.stoichiometry))
                 pathway_stoichio.append(float(pro.stoichiometry))
@@ -513,12 +546,12 @@ class rpThermo:
                     X_path += X
                     G_path += G
             for rea in reaction.getListOfReactants():
-                #print(rpsbml.model.getSpecies(rea.species).getAnnotation().toXMLString())
                 try:
                     if not rea.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
                                 rpsbml.model.getSpecies(rea.species).getAnnotation(),
-                                -float(rea.stoichiometry))
+                                -float(rea.stoichiometry),
+                                pro.species.split('__')[0])
                         already_calculated[rea.species] = {}
                         already_calculated[rea.species]['dfG_prime_o'] = dfG_prime_o
                         already_calculated[rea.species]['X'] = X
@@ -530,7 +563,7 @@ class rpThermo:
                         G = already_calculated[rea.species]['G']
                         concentration = already_calculated[rea.species]['concentration']
                 except (KeyError, LookupError):
-                    self.logger.warning('Failed to calculate the thermodynamics for '+str(pro.species))
+                    self.logger.error('Failed to calculate the thermodynamics for '+str(pro.species))
                     continue
                 reaction_stoichio.append(-float(rea.stoichiometry))
                 pathway_stoichio.append(-float(rea.stoichiometry))

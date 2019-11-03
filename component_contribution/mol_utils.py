@@ -29,9 +29,7 @@ import openbabel
 import pybel
 from six import iteritems
 
-
 PERIODIC_TABLE = _obElements = openbabel.OBElementTable()
-
 
 def atom_bag_and_charge(molecule):
     """
