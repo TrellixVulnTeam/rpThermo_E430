@@ -10,10 +10,8 @@ import os
 import io
 #import zipfile
 import tarfile
-import shutil
 import glob
-import random
-import string
+import tempfile
 
 import json
 from datetime import datetime
@@ -59,30 +57,25 @@ def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
 #
 #
 def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
-    if not os.path.exists(os.getcwd()+'/tmp'):
-        os.mkdir(os.getcwd()+'/tmp')
-    tmpInputFolder = os.getcwd()+'/tmp/'+''.join(random.choice(string.ascii_lowercase) for i in range(15))
-    tmpOutputFolder = os.getcwd()+'/tmp/'+''.join(random.choice(string.ascii_lowercase) for i in range(15))
-    os.mkdir(tmpInputFolder)
-    os.mkdir(tmpOutputFolder)
-    tar = tarfile.open(fileobj=inputTar, mode='r:xz')
-    tar.extractall(path=tmpInputFolder)
-    tar.close()
-    for sbml_path in glob.glob(tmpInputFolder+'/*'):
-        fileName = sbml_path.split('/')[-1].replace('.sbml', '')
-        rpsbml = rpSBML.rpSBML(fileName)
-        rpsbml.readSBML(sbml_path)
-        rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
-        rpsbml.writeSBML(tmpOutputFolder)
-        rpsbml = None
-    with tarfile.open(fileobj=outputTar, mode='w:xz') as ot:
-        for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-            fileName = str(sbml_path.split('/')[-1].replace('.sbml', ''))
-            info = tarfile.TarInfo(fileName)
-            info.size = os.path.getsize(sbml_path)
-            ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
-    shutil.rmtree(tmpInputFolder)
-    shutil.rmtree(tmpOutputFolder)
+    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+        with tempfile.TemporaryDirectory() as tmpInputFolder:
+            tar = tarfile.open(fileobj=inputTar, mode='r:xz')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '')
+                rpsbml = rpSBML.rpSBML(fileName)
+                rpsbml.readSBML(sbml_path)
+                rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml = None
+            with tarfile.open(fileobj=outputTar, mode='w:xz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', ''))
+                    fileName += '.sbml.xml'
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
 
 
 #######################################################
