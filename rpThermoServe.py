@@ -63,7 +63,7 @@ def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
             tar.extractall(path=tmpInputFolder)
             tar.close()
             for sbml_path in glob.glob(tmpInputFolder+'/*'):
-                fileName = sbml_path.split('/')[-1].replace('.sbml', '')
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '')
                 rpsbml = rpSBML.rpSBML(fileName)
                 rpsbml.readSBML(sbml_path)
                 rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
@@ -71,7 +71,7 @@ def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
                 rpsbml = None
             with tarfile.open(fileobj=outputTar, mode='w:xz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', ''))
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', ''))
                     fileName += '.sbml.xml'
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
