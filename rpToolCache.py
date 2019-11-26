@@ -7,30 +7,25 @@ import json
 import logging
 import numpy as np
 from ast import literal_eval
+from rpCache import rpCache
 
 
 ## Class to generate the cache
 #
 # Contains all the functions that parse different files, used to calculate the thermodynamics and the FBA of the
 #the other steps. These should be called only when the files have changes
-class rpCache:
+class rpToolCache(rpCache):
     ## Cache constructor
     #
     # @param self The object pointer
     # @param inputPath The path to the folder that contains all the input/output files required
     def __init__(self):
-        #given by Thomas
-        self.logger = logging.getLogger(__name__)
-        self.logger.info('Started instance of rpCache')
-        self.convertMNXM = {'MNXM162231': 'MNXM6',
-                'MNXM84': 'MNXM15',
-                'MNXM96410': 'MNXM14',
-                'MNXM114062': 'MNXM3',
-                'MNXM145523': 'MNXM57',
-                'MNXM57425': 'MNXM9',
-                'MNXM137': 'MNXM588022'}
+
+        super().__init__()
+
         self.kegg_dG = None
         self.cc_preprocess = None
+
         if not self._loadCache():
             raise ValueError
 
@@ -122,4 +117,4 @@ class rpCache:
 
 
 if __name__== "__main__":
-    rpcache = rpCache()
+    rpcache = rpToolCache()
