@@ -19,8 +19,8 @@ from flask import Flask, request, jsonify, send_file, abort
 from flask_restful import Resource, Api
 
 sys.path.insert(0, '/home/')
-import rpThermo
-import rpCache
+import rpTool as rpThermo
+import rpToolCache
 import rpSBML
 
 
@@ -88,7 +88,7 @@ api = Api(app)
 
 
 #global thermo parameter
-rpcache = rpCache.rpCache()
+rpcache = rpToolCache.rpToolCache()
 
 def stamp(data, status=1):
     appinfo = {'app': 'rpThermo', 'version': '1.0',
