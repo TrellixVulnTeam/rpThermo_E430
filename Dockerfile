@@ -1,33 +1,9 @@
-FROM brsynth/rpbase
+FROM brsynth/rpcache-rest
 
 RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda pandas && \
-    conda install -c anaconda scipy && \
-    conda install -c conda-forge flask-restful
-    #conda install -y -c conda-forge openbabel && \
+    conda install -c anaconda scipy
 
 RUN apt-get install --quiet --yes libxext6 libxrender-dev
 
-COPY rpThermo.py /home/
-COPY component_contribution/ component_contribution/
-COPY input_cache.tar.xz /home/
-
-#copy and extract the input_cache
-#add the component contribution files
-RUN tar xf /home/input_cache.tar.xz -C /home && \
-    rm /home/input_cache.tar.xz && \
-    tar xf /home/component_contribution/component_contribution_data.tar.xz -C /home/component_contribution/ && \
-    mkdir /home/cache/ && \
-    mv /home/input_cache/cc_preprocess.npz /home/cache/cc_preprocess.npz
-
-COPY rpThermo.py /home/
-COPY rpThermoServe.py /home/
-COPY rpCache.py /home/
-
-RUN python /home/rpCache.py
-
-ENTRYPOINT ["python"]
-CMD ["/home/rpThermoServe.py"]
-
-# Open server port
-EXPOSE 8995
+COPY component_contribution/ /home/component_contribution/
