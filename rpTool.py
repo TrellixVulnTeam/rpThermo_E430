@@ -12,6 +12,7 @@ import gzip
 import re
 import urllib.request
 from ast import literal_eval
+from rpCache import rpCache
 
 #local package
 import component_contribution
@@ -22,11 +23,11 @@ class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
     metabolic pathways output from RP2paths and thus RetroPath2.0
     """
-    def __init__(self, 
-            pH=7.0, 
-            pMg=14.0, 
-            ionic_strength=0.1, 
-            temperature=298.15):
+    def __init__(self,
+                 pH=7.0,
+                 pMg=14.0,
+                 ionic_strength=0.1,
+                 temperature=298.15):
         #self.compound_dict = compound_dict
         #TODO: put this in its own function
         self.logger = logging.getLogger(__name__)
@@ -63,11 +64,11 @@ class rpThermo:
         self.calculated_dG = {}
         self.kegg_dG = {}
         self.userMNX_speXref = {
-                'MNXM1': {'kegg': 'C00080'}, 
-                'MNXM4': {'kegg': 'C00007'}, 
-                'MNXM22': {'kegg': 'C00027'}, 
-                'MNXM13': {'kegg': 'C00011'}, 
-                'MNXM8': {'kegg': 'C00003'}, 
+                'MNXM1': {'kegg': 'C00080'},
+                'MNXM4': {'kegg': 'C00007'},
+                'MNXM22': {'kegg': 'C00027'},
+                'MNXM13': {'kegg': 'C00011'},
+                'MNXM8': {'kegg': 'C00003'},
                 'MNXM15': {'kegg': 'C00014'},
                 'MNXM2': {'kegg': 'C00001'},
                 'MNXM12': {'kegg': 'C00010'},
@@ -111,7 +112,7 @@ class rpThermo:
                 group_vector = None
                 pmap_species = None
                 try:
-                    compound_index = self.kegg_dG[cid]['component_contribution'][0]['compound_index'] 
+                    compound_index = self.kegg_dG[cid]['component_contribution'][0]['compound_index']
                 except KeyError:
                     pass
                 try:
@@ -268,12 +269,12 @@ class rpThermo:
     def cmp_dfG_prime_o(self, kegg_cid, stoichio):
         ########### dG0_f ###########
         #WARNING: we are ignoring gas phase even if it would be valid in some cases (O2 for example)
-        physioParameter = None #determine the phase for the concentration adjustement 
+        physioParameter = None #determine the phase for the concentration adjustement
         try:
             compound_index, group_vector, species_list = self._select_dG(kegg_cid)
-            scaled_transforms = [-self.dG_dGprime(i['nMg'], 
-                                           i['z'], 
-                                           i['nH'], 
+            scaled_transforms = [-self.dG_dGprime(i['nMg'],
+                                           i['z'],
+                                           i['nH'],
                                            i['dG0_f'])/self.RT for i in species_list if not i['phase']=='gas']
             #note that this should change if a user wants to input his own values....
             #WARNING: we are taking the first one only
@@ -304,7 +305,7 @@ class rpThermo:
     ##########################################################
     ################## BOTH ##################################
     ##########################################################
-    
+
 
     ## Calculate the uncertainty with a given Gibbs free enery
     #
@@ -314,7 +315,7 @@ class rpThermo:
                              X.T @ self.cc_preprocess['C2'] @G +
                              G.T @ self.cc_preprocess['C3'] @G ))
 
-   
+
     ## takes a list of SBase libsbml objects and extracts the stochiometry from it
     #
     #TODO: extract the concentration (if defined) instead of using the milliMolar concentration adjustment
@@ -383,14 +384,14 @@ class rpThermo:
                     try:
                         cid = self.userMNX_speXref[species_mnxm]['kegg']
                     except KeyError:
-                        cid = None 
+                        cid = None
                 else:
                     mnxm = None
                     cid = None
             if cid:
                 try:
                     dfG_prime_o, X, G, physioParameter = self.cmp_dfG_prime_o(
-                            cid, 
+                            cid,
                             stoichio)
                 except KeyError:
                     #TODO: seperate this part in a function instead of repeating the code
@@ -398,8 +399,8 @@ class rpThermo:
                     if inchi:
                         try:
                             dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                    'inchi', 
-                                    inchi, 
+                                    'inchi',
+                                    inchi,
                                     stoichio)
                             self.calculated_dG[smiles] = {}
                             self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
@@ -432,8 +433,8 @@ class rpThermo:
                 if inchi:
                     try:
                         dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                'inchi', 
-                                inchi, 
+                                'inchi',
+                                inchi,
                                 stoichio)
                         self.calculated_dG[smiles] = {}
                         self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
@@ -462,7 +463,7 @@ class rpThermo:
             physioParameter = 1e-3
         if not dfG_prime_o==None:
             write_dfG_prime_o = dfG_prime_o
-            dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter]) 
+            dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
             write_dfG_prime_m = dfG_prime_m
             write_uncertainty = self.dG0_uncertainty(X, G)
         elif cid=='C00080':
@@ -471,13 +472,13 @@ class rpThermo:
             write_uncertainty = 5.8
             ### this is wrong.... need to define it better
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
-            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1)) 
+            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
         else:
             write_dfG_prime_o = 0.0
             write_dfG_prime_m = 0.0
             write_uncertainty = 0.0
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
-            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1)) 
+            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
         brsynth_annot = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
@@ -485,15 +486,15 @@ class rpThermo:
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later 
+        return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
 
 
     ## Calculate the pathway and reactions dG0_prime_o and its uncertainty
     #
-    # WARNING: we skip the components that we fail to calculate the thermodynamics and 
+    # WARNING: we skip the components that we fail to calculate the thermodynamics and
     # and as a consequence the pathway thermo score ignore that step --> need to at least report it
     def pathway_drG_prime_m(self, rpsbml, pathId='rp_pathway'):
-        #calculate the number of species that are involded in the pathway 
+        #calculate the number of species that are involded in the pathway
         #for each species calculate the ddG_prime_m and its uncertainty
         #test to see if there are mutliple MNX and remove all deprecated ones
         groups = rpsbml.model.getPlugin('groups')
@@ -505,7 +506,7 @@ class rpThermo:
         pathway_stoichio = []
         pathway_concentration = []
         #path
-        already_calculated = {} 
+        already_calculated = {}
         for member in rp_pathway.getListOfMembers():
             reaction_dfG_prime_o = 0.0
             X_reaction = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
@@ -518,7 +519,7 @@ class rpThermo:
                 try:
                     if not pro.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
-                                rpsbml.model.getSpecies(pro.species).getAnnotation(), 
+                                rpsbml.model.getSpecies(pro.species).getAnnotation(),
                                 float(pro.stoichiometry),
                                 pro.species.split('__')[0])
                         already_calculated[pro.species] = {}
@@ -597,7 +598,7 @@ class rpThermo:
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
 
 
-    #TODO: implement to return if the reaction is balanced and the reversibility index 
+    #TODO: implement to return if the reaction is balanced and the reversibility index
 
     def isBalanced():
         """Function borrowed from the component contribution that checks is the per-atom
@@ -611,4 +612,3 @@ class rpThermo:
         """Quantitative measure for the reversibility of a reaction by taking into consideration the concentration of the substrate and products
         """
         return False
-
