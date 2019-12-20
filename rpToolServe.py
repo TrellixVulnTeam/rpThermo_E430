@@ -77,64 +77,18 @@ def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
 
-
-#######################################################
-############## REST ###################################
-#######################################################
-
-
-app = Flask(__name__)
-api = Api(app)
-
-
-#global thermo parameter
-rpcache = rpToolCache.rpToolCache()
-
-def stamp(data, status=1):
-    appinfo = {'app': 'rpThermo', 'version': '1.0',
-               'author': 'Melchior du Lac',
-               'organization': 'BRS',
-               'time': datetime.now().isoformat(),
-               'status': status}
-    out = appinfo.copy()
-    out['data'] = data
-    return out
-
-
-class RestApp(Resource):
-    """ REST App."""
-    def post(self):
-        return jsonify(stamp(None))
-    def get(self):
-        return jsonify(stamp(None))
-
-
-class RestQuery(Resource):
-    """ REST interface that generates the Design.
-        Avoid returning numpy or pandas object in
-        order to keep the client lighter.
-    """
-    def post(self):
-        inputTar = request.files['inputTar']
-        params = json.load(request.files['data'])
-        #pass the files to the rpReader
-        outputTar = io.BytesIO()
+##
+#
+#
+def main(inputTar, outputTar, pathway_id='rp_pathway'):
+    with open(inputTar, 'rb') as inputTar_bytes:
+        outputTar_bytes = io.BytesIO()
         rpthermo = rpThermo.rpThermo()
         rpthermo.kegg_dG = rpcache.kegg_dG
         rpthermo.cc_preprocess = rpcache.cc_preprocess
-        ###### MEM ######
-        #runThermo_mem(rpthermo, inputTar, outputTar, params['pathway_id'])
-        ###### HDD ######
-        runThermo_hdd(rpthermo, inputTar, outputTar, params['pathway_id'])
-        ###### IMPORTANT ######
-        outputTar.seek(0)
-        #######################
-        return send_file(outputTar, as_attachment=True, attachment_filename='rpThermo.tar', mimetype='application/x-tar')
-
-
-api.add_resource(RestApp, '/REST')
-api.add_resource(RestQuery, '/REST/Query')
-
-
-if __name__== "__main__":
-    app.run(host="0.0.0.0", port=8888, debug=True, threaded=True)
+        runThermo_hdd(rpthermo, inputTar_bytes, outputTar_bytes, params['pathway_id'])
+        ########## IMPORTANT #####
+        outputTar_bytes.seek(0)
+        ##########################
+        with open(outputTar, 'wb') as f:
+            shutil.copyfileobj(outputTar_bytes, f, length=131072)
