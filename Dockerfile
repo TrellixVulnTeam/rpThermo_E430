@@ -5,5 +5,4 @@ RUN conda install -y -c openbabel openbabel && \
     conda install -c anaconda scipy
 
 COPY component_contribution /home/component_contribution/
-
-
+COPY cc_preprocess.npz /home/cache/
