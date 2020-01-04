@@ -12,6 +12,7 @@ import io
 import tarfile
 import glob
 import tempfile
+import shutil
 
 sys.path.insert(0, '/home/')
 import rpTool as rpThermo
@@ -78,10 +79,11 @@ def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
 def main(inputTar, outputTar, pathway_id='rp_pathway'):
     with open(inputTar, 'rb') as inputTar_bytes:
         outputTar_bytes = io.BytesIO()
+        rpcache = rpToolCache.rpToolCache()
         rpthermo = rpThermo.rpThermo()
         rpthermo.kegg_dG = rpcache.kegg_dG
         rpthermo.cc_preprocess = rpcache.cc_preprocess
-        runThermo_hdd(rpthermo, inputTar_bytes, outputTar_bytes, params['pathway_id'])
+        runThermo_hdd(rpthermo, inputTar_bytes, outputTar_bytes, pathway_id)
         ########## IMPORTANT #####
         outputTar_bytes.seek(0)
         ##########################

@@ -16,3 +16,5 @@ RUN tar xf /home/input_cache.tar.xz -C / && \
     tar xf /home/component_contribution/component_contribution_data.tar.xz -C /home/component_contribution/ && \
     #mkdir /home/cache/ && \
     mv /home/input_cache/cc_preprocess.npz /home/cache/cc_preprocess.npz
+
+RUN python rpToolCache.py
