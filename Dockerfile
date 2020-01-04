@@ -1,4 +1,5 @@
-FROM brsynth/rpcache-rest
+#FROM brsynth/rpcache-rest
+FROM brsynth/rpcache
 
 RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda pandas && \
