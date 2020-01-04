@@ -4,3 +4,4 @@ component_contribution/data/
 input_cache/
 cache/
 rpSBML.py
+test/test_output.tar
