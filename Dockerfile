@@ -9,6 +9,7 @@ COPY component_contribution /home/component_contribution/
 COPY input_cache.tar.xz /home/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
+COPY rpToolCache.py /home/
 
 RUN tar xf /home/input_cache.tar.xz -C / && \
     mv /input_cache/* /home/input_cache/ && \
