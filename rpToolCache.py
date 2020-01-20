@@ -47,7 +47,7 @@ class rpToolCache(rpCache):
         #compounds.csv
         if not os.path.isfile(dirname+'/input_cache/rr_compounds.csv') or fetchInputFiles:
             urllib.request.urlretrieve('TODO',
-                    dirname+'/input_cache/rr_compounds.csv')
+                    dirname+'/input_cache/compounds.csv')
         #cc_preprocess.npz
         if not os.path.isfile(dirname+'/cache/cc_preprocess.npz') or fetchInputFiles:
             urllib.request.urlretrieve('TODO',
