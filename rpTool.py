@@ -332,6 +332,7 @@ class rpThermo:
     ###########################################################
 
 
+    #TODO: use rpSBML functions instead of manual
     ## Calculate a  species dG0_prime_o and its uncertainty
     #
     #
