@@ -258,8 +258,6 @@ class rpThermo:
         # add the potential related to the Mg ions
         if nMg > 0:
             dG0_prime += nMg*(self.RTlog10*nMg-self.mg_formation_energy)
-        #print('nH = %d, z = %d, dG0 = %.1f --> dG0\' = %.1f' %
-        #              (nH, z, dG0_f, dG0_prime))
         return dG0_prime
 
 
@@ -332,10 +330,11 @@ class rpThermo:
     ###########################################################
 
 
+    #TODO: use rpSBML functions instead of manual
     ## Calculate a  species dG0_prime_o and its uncertainty
     #
     #
-    def species_dfG_prime_o(self, species_annot, stoichio, species_mnxm=None):
+    def species_dfG_prime_o(self, rpsbml, species, stoichio, species_mnxm=None):
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
@@ -343,8 +342,11 @@ class rpThermo:
         cid = None
         physioParameter = None #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc.... TODO: Next step is to have the user input his own
         #Try to find your species in the already calculated species
-        smiles = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('smiles').getChild(0).toXMLString()
-        inchi = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('inchi').getChild(0).toXMLString()
+        brs_annot = rpsbml.readBRSYNTHAnnotation(species.getAnnotation())
+        smiles = brs_annot['smiles']
+        inchi = brs_annot['inchi']
+        #smiles = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('smiles').getChild(0).toXMLString()
+        #inchi = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('inchi').getChild(0).toXMLString()
         #TODO: add the structure check
         ################### use already calculated ##########################
         if inchi in self.calculated_dG:
@@ -358,6 +360,17 @@ class rpThermo:
         else:
             ################## use the KEGG id for precalculated ######################
             #if not try to find it in cc_preprocess
+            annot = species.getAnnotation()
+            miriam_annot = rpsbml.readMIRIAMAnnotation(species.getAnnotation())
+            try:
+                cid = miriam_annot['kegg']
+            except KeyError:
+                cid = []
+            try:
+                mnxm = miriam_annot['metanetx']
+            except KeyError:
+                mnxm = []
+            '''
             cid = []
             mnxm = []
             bag = species_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
@@ -367,6 +380,7 @@ class rpThermo:
                     cid.append(str_annot.split('/')[-1])
                 if str_annot.split('/')[-2]=='metanetx.chemical':
                     mnxm.append(str_annot.split('/')[-1])
+            '''
             #### KEGG ###
             cid = [i for i in cid if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
             if len(cid)>=1:
@@ -466,7 +480,7 @@ class rpThermo:
             dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
             write_dfG_prime_m = dfG_prime_m
             write_uncertainty = self.dG0_uncertainty(X, G)
-        elif cid=='C00080':
+        if cid=='C00080':
             write_dfG_prime_o = 0.0
             write_dfG_prime_m = -17.1
             write_uncertainty = 5.8
@@ -479,6 +493,10 @@ class rpThermo:
             write_uncertainty = 0.0
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
             G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', write_dfG_prime_o, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', write_dfG_prime_m, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_uncert', write_uncertainty, 'kj_per_mol')
+        '''
         brsynth_annot = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
@@ -486,6 +504,7 @@ class rpThermo:
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+        '''
         return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
 
 
@@ -516,10 +535,12 @@ class rpThermo:
             reaction = rpsbml.model.getReaction(member.getIdRef())
             #react
             for pro in reaction.getListOfProducts():
+                dfG_prime_o = None
                 try:
                     if not pro.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
-                                rpsbml.model.getSpecies(pro.species).getAnnotation(),
+                                rpsbml,
+                                rpsbml.model.getSpecies(pro.species),
                                 float(pro.stoichiometry),
                                 pro.species.split('__')[0])
                         already_calculated[pro.species] = {}
@@ -547,12 +568,14 @@ class rpThermo:
                     X_path += X
                     G_path += G
             for rea in reaction.getListOfReactants():
+                dfG_prime_o = None
                 try:
                     if not rea.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
-                                rpsbml.model.getSpecies(rea.species).getAnnotation(),
+                                rpsbml,
+                                rpsbml.model.getSpecies(rea.species),
                                 -float(rea.stoichiometry),
-                                pro.species.split('__')[0])
+                                rea.species.split('__')[0])
                         already_calculated[rea.species] = {}
                         already_calculated[rea.species]['dfG_prime_o'] = dfG_prime_o
                         already_calculated[rea.species]['X'] = X
@@ -580,6 +603,10 @@ class rpThermo:
             #add the reaction thermo to the sbml
             #brsynth_annot = member.getIdRef().getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
             reac = rpsbml.model.getReaction(member.getIdRef())
+            rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o', reaction_dfG_prime_o, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(reac, 'dfG_uncert', self.dG0_uncertainty(X_reaction, G_reaction), 'kj_per_mol')
+            '''
             reac_annot = reac.getAnnotation()
             brsynth_annot = reac_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
             tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(reaction_dfG_prime_o)+'" /> </brsynth:brsynth>')
@@ -588,6 +615,11 @@ class rpThermo:
             brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
             tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </brsynth:brsynth>')
             brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+            '''
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', pathway_dfG_prime_o, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration), 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', self.dG0_uncertainty(X_path, G_path), 'kj_per_mol')
+        '''
         #add the pathway thermo to the sbml
         brsynth_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </brsynth:brsynth>')
@@ -596,8 +628,7 @@ class rpThermo:
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
         tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </brsynth:brsynth>')
         brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-
-
+        '''
     #TODO: implement to return if the reaction is balanced and the reversibility index
 
     def isBalanced():
