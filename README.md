@@ -33,7 +33,7 @@ sudo service docker restart
 Build the docker image:
 
 ```
-docker build -t brsynth/rpthermo .
+docker build -t brsynth/rpthermo-rest .
 ```
 
 Make sure that the following entry exists under Galaxy's destination tag in job_conf.xml:
@@ -62,7 +62,7 @@ chmod 755 *.py
 ## Running the service
 
 ```
-docker run -p 8888:8888 brsynth/rpthermo
+docker run -p 8888:8888 brsynth/rpthermo-rest
 ```
 
 ## Running the tests
