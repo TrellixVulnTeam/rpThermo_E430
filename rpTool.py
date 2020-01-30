@@ -376,6 +376,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
                 return dfG_prime_o, X, G, physioParameter
             except KeyError:
+                self.logger.warning('Cannot find by KEGG ID: '+str(c))
                 pass
         ############# Pre-Calculated Structure #####################
         #Precalculated
@@ -388,6 +389,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+            self.logger.warning('Used pre-calculated inchi: '+str(inchi))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         elif smiles in self.calculated_dG:
             X = self.calculated_dG[smiles]['X']
@@ -398,6 +400,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+            self.logger.warning('Used pre-calculated smiles: '+str(smiles))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         ############### calculate Structure ########################
         #CID
@@ -418,6 +421,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
+                self.logger.warning('Cannot calculate thermo using inchi structure: '+str(inchi))
                 pass
         #try for inchi
         if smiles:
@@ -437,12 +441,17 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
+                self.logger.warning('Cannot calculate thermo using smiles structure: '+str(smiles))
                 pass
         self.logger.warning('Cannot calculate thermodynamics '+str(species.getId()))
         dfG_prime_o = 0.0
         dfG_prime_m = 0.0
+        uncertainty = 0.0
         X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
         G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
         return dfG_prime_o, X, G, physioParameter
 
 
