@@ -169,11 +169,12 @@ class rpThermo:
             self.logger.warning('Molecule with no explicit structure: '+str(srct_string))
             raise LookupError
         #compute pKas
-        try:
-            p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
-        except:
-            self.logger.warning('ChemAxon has encountered an error')
-            raise LookupError
+        #try:
+        p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
+        #except as e:
+        #    self.logger.warning(e)
+        #    self.logger.warning('ChemAxon has encountered an error')
+        #    raise LookupError
         p_kas = sorted([pka for pka in p_kas if self.min_pH<pka<self.max_pH], reverse=True)
         molecule = pybel.readstring('smi', major_ms_smiles)
         atom_bag, major_ms_charge = component_contribution.compound.atom_bag_and_charge(molecule)
@@ -328,6 +329,8 @@ class rpThermo:
     #
     # physioParameter = 1e-3 #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc....
     def species_dfG_prime_o(self, rpsbml, species, stoichio, physioParameter=1e-3):
+        self.logger.warning('############# species_dfG_prime_o ############')
+        self.logger.warning(species.getId())
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
