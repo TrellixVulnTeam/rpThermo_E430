@@ -169,11 +169,12 @@ class rpThermo:
             self.logger.warning('Molecule with no explicit structure: '+str(srct_string))
             raise LookupError
         #compute pKas
-        try:
-            p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
-        except:
-            self.logger.warning('ChemAxon has encountered an error')
-            raise LookupError
+        #try:
+        p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
+        #except as e:
+        #    self.logger.warning(e)
+        #    self.logger.warning('ChemAxon has encountered an error')
+        #    raise LookupError
         p_kas = sorted([pka for pka in p_kas if self.min_pH<pka<self.max_pH], reverse=True)
         molecule = pybel.readstring('smi', major_ms_smiles)
         atom_bag, major_ms_charge = component_contribution.compound.atom_bag_and_charge(molecule)
@@ -365,6 +366,7 @@ class rpThermo:
             ###TODO this is wrong.... need to define it better
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
             G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+            self.logger.info('This is Hydrogen')
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         for c in cid:
             try:
@@ -374,6 +376,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Using KEGG precomputed thermo: '+str(c))
                 return dfG_prime_o, X, G, physioParameter
             except KeyError:
                 self.logger.warning('Cannot find by KEGG ID: '+str(c))
@@ -389,7 +392,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
-            self.logger.warning('Used pre-calculated inchi: '+str(inchi))
+            self.logger.info('Used pre-calculated inchi: '+str(inchi))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         elif smiles in self.calculated_dG:
             X = self.calculated_dG[smiles]['X']
@@ -400,7 +403,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
-            self.logger.warning('Used pre-calculated smiles: '+str(smiles))
+            self.logger.info('Used pre-calculated smiles: '+str(smiles))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         ############### calculate Structure ########################
         #CID
@@ -419,6 +422,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from InChI structure: '+str(inchi))
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
                 self.logger.warning('Cannot calculate thermo using inchi structure: '+str(inchi))
@@ -439,11 +443,14 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from SMILES structure: '+str(smiles))
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
                 self.logger.warning('Cannot calculate thermo using smiles structure: '+str(smiles))
                 pass
         self.logger.warning('Cannot calculate thermodynamics '+str(species.getId()))
+        self.logger.warning(inchi)
+        self.logger.warning(smiles)
         dfG_prime_o = 0.0
         dfG_prime_m = 0.0
         uncertainty = 0.0
