@@ -370,17 +370,6 @@ class rpThermo:
                 mnxm = miriam_annot['metanetx']
             except KeyError:
                 mnxm = []
-            '''
-            cid = []
-            mnxm = []
-            bag = species_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
-            for i in range(bag.getNumChildren()):
-                str_annot = bag.getChild(i).getAttrValue(0)
-                if str_annot.split('/')[-2]=='kegg.compound':
-                    cid.append(str_annot.split('/')[-1])
-                if str_annot.split('/')[-2]=='metanetx.chemical':
-                    mnxm.append(str_annot.split('/')[-1])
-            '''
             #### KEGG ###
             cid = [i for i in cid if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
             if len(cid)>=1:
@@ -496,15 +485,6 @@ class rpThermo:
         rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', write_dfG_prime_o, 'kj_per_mol')
         rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', write_dfG_prime_m, 'kj_per_mol')
         rpsbml.addUpdateBRSynth(species, 'dfG_uncert', write_uncertainty, 'kj_per_mol')
-        '''
-        brsynth_annot = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(write_dfG_prime_m)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        '''
         return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
 
 
@@ -587,7 +567,7 @@ class rpThermo:
                         G = already_calculated[rea.species]['G']
                         concentration = already_calculated[rea.species]['concentration']
                 except (KeyError, LookupError):
-                    self.logger.error('Failed to calculate the thermodynamics for '+str(pro.species))
+                    self.logger.error('Failed to calculate the thermodynamics for '+str(rea.species))
                     continue
                 reaction_stoichio.append(-float(rea.stoichiometry))
                 pathway_stoichio.append(-float(rea.stoichiometry))
@@ -606,31 +586,12 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o', reaction_dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), 'kj_per_mol')
             rpsbml.addUpdateBRSynth(reac, 'dfG_uncert', self.dG0_uncertainty(X_reaction, G_reaction), 'kj_per_mol')
-            '''
-            reac_annot = reac.getAnnotation()
-            brsynth_annot = reac_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(reaction_dfG_prime_o)+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration))+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-            '''
         rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', pathway_dfG_prime_o, 'kj_per_mol')
         rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration), 'kj_per_mol')
         rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', self.dG0_uncertainty(X_path, G_path), 'kj_per_mol')
-        '''
-        #add the pathway thermo to the sbml
-        brsynth_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration))+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        '''
-    #TODO: implement to return if the reaction is balanced and the reversibility index
 
+
+    #TODO: implement to return if the reaction is balanced and the reversibility index
     def isBalanced():
         """Function borrowed from the component contribution that checks is the per-atom
         difference in a reaction is balanced
