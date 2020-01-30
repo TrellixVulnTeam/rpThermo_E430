@@ -329,8 +329,6 @@ class rpThermo:
     #
     # physioParameter = 1e-3 #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc....
     def species_dfG_prime_o(self, rpsbml, species, stoichio, physioParameter=1e-3):
-        self.logger.warning('############# species_dfG_prime_o ############')
-        self.logger.warning(species.getId())
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
@@ -368,6 +366,7 @@ class rpThermo:
             ###TODO this is wrong.... need to define it better
             X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
             G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+            self.logger.info('This is Hydrogen')
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         for c in cid:
             try:
@@ -377,6 +376,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Using KEGG precomputed thermo: '+str(c))
                 return dfG_prime_o, X, G, physioParameter
             except KeyError:
                 self.logger.warning('Cannot find by KEGG ID: '+str(c))
@@ -392,7 +392,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
-            self.logger.warning('Used pre-calculated inchi: '+str(inchi))
+            self.logger.info('Used pre-calculated inchi: '+str(inchi))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         elif smiles in self.calculated_dG:
             X = self.calculated_dG[smiles]['X']
@@ -403,7 +403,7 @@ class rpThermo:
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
             rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
-            self.logger.warning('Used pre-calculated smiles: '+str(smiles))
+            self.logger.info('Used pre-calculated smiles: '+str(smiles))
             return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         ############### calculate Structure ########################
         #CID
@@ -422,6 +422,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from InChI structure: '+str(inchi))
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
                 self.logger.warning('Cannot calculate thermo using inchi structure: '+str(inchi))
@@ -442,6 +443,7 @@ class rpThermo:
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
                 rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from SMILES structure: '+str(smiles))
                 return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
             except LookupError:
                 self.logger.warning('Cannot calculate thermo using smiles structure: '+str(smiles))
