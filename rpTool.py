@@ -444,6 +444,8 @@ class rpThermo:
                 self.logger.warning('Cannot calculate thermo using smiles structure: '+str(smiles))
                 pass
         self.logger.warning('Cannot calculate thermodynamics '+str(species.getId()))
+        self.logger.warning(inchi)
+        self.logger.warning(smiles)
         dfG_prime_o = 0.0
         dfG_prime_m = 0.0
         uncertainty = 0.0
