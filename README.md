@@ -62,7 +62,7 @@ chmod 755 *.py
 ## Running the service
 
 ```
-docker run -p 8888:8888 brsynth/rpthermo-rest
+docker run -p 8883:8888 brsynth/rpthermo-rest
 ```
 
 ## Running the tests
