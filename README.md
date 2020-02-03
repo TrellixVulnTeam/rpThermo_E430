@@ -33,7 +33,7 @@ sudo service docker restart
 Build the docker image:
 
 ```
-docker build -t brsynth/rpthermo .
+docker build -t brsynth/rpthermo-standalone .
 ```
 
 Make sure that the following entry exists under Galaxy's destination tag in job_conf.xml:
