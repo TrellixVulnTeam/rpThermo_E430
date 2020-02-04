@@ -9,14 +9,5 @@ RUN apt-get install -y apt-transport-https gnupg apt-utils ca-certificates libuu
 RUN apt-get update
 RUN apt-get install -y --allow-unauthenticated marvin
 
-COPY component_contribution /home/component_contribution/
-COPY input_cache.tar.xz /home/
 COPY license.cxl /home/
 ENV CHEMAXON_LICENSE_URL /home/license.cxl
-
-RUN tar xf /home/input_cache.tar.xz -C / && \
-    mv /input_cache/* /home/input_cache/ && \
-    rm /home/input_cache.tar.xz && \
-    tar xf /home/component_contribution/component_contribution_data.tar.xz -C /home/component_contribution/ && \
-    #mkdir /home/cache/ && \
-    mv /home/input_cache/cc_preprocess.npz /home/cache/cc_preprocess.npz
