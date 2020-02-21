@@ -1,14 +1,20 @@
-#FROM brsynth/rpcache-rest
-FROM brsynth/rpcache
+FROM brsynth/rpcache:dev
 
 RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda pandas && \
     conda install -c anaconda scipy
 
-COPY component_contribution /home/component_contribution/
-COPY input_cache.tar.xz /home/
+RUN apt-get install -y apt-transport-https ca-certificates
+#RUN echo 'deb CHEMAXON-KEY  main' >> /etc/apt/sources.list
+RUN apt-get update
+RUN apt-get install -y apt-transport-https gnupg apt-utils ca-certificates libuuid1 libblkid-dev openjdk-8-jdk
+RUN apt-get install -y --allow-unauthenticated marvin
+
 COPY license.cxl /home/
 ENV CHEMAXON_LICENSE_URL /home/license.cxl
+
+COPY component_contribution /home/component_contribution/
+COPY input_cache.tar.xz /home/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
 COPY rpToolCache.py /home/
