@@ -28,7 +28,7 @@ docker build -t brsynth/rpthermo-rest:dev .
 To run the service as localhost use the following service:
 
 ```
-docker run -p 8883:8888 brsynth/rpthermo-rest:dev
+docker run -p 8882:8888 brsynth/rpthermo-rest:dev
 ```
 
 ## Algorithm
