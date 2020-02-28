@@ -27,29 +27,19 @@ import rpSBML
 ##
 #
 #
-def singleThermo_mem(rpthermo, member_name, rpsbml_string, pathway_id):
-    #open one of the rp SBML files
-    rpsbml = rpSBML.rpSBML(member_name, libsbml.readSBMLFromString(rpsbml_string))
-    rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
-    return libsbml.writeSBMLToString(rpsbml.document).encode('utf-8')
-
-
-##
-#
-#
-def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
+def runThermo_mem(rpthermo, inputTar, outputTar, pathway_id):
     #loop through all of them and run FBA on them
-    with tarfile.open(fileobj=outTar, mode='w:xz') as tf:
+    with tarfile.open(fileobj=outputTar, mode='w:xz') as tf:
         with tarfile.open(fileobj=inputTar, mode='r:xz') as in_tf:
             for member in in_tf.getmembers():
                 if not member.name=='':
-                    data = singleThermo_mem(rpthermo,
-                            member.name,
-                            in_tf.extractfile(member).read().decode("utf-8"),
-                            pathway_id)
-                    fiOut = io.BytesIO(data)
-                    info = tarfile.TarInfo(member.name)
-                    info.size = len(data)
+                    fileName = member.name.replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+                    rpsbml = rpSBML.rpSBML(filename, libsbml.readSBMLFromString(in_tf.extractfile(member).read().decode("utf-8")))
+                    rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                    sbml_bytes = libsbml.writeSBMLToString(rpsbml.document).encode('utf-8')
+                    fiOut = io.BytesIO(sbml_bytes)
+                    info = tarfile.TarInfo(fileName+'.rpsbml.xml')
+                    info.size = len(sbml_bytes)
                     tf.addfile(tarinfo=info, fileobj=fiOut)
 
 
