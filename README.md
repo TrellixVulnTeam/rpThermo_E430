@@ -33,7 +33,7 @@ sudo service docker restart
 Build the docker image:
 
 ```
-docker build -t brsynth/rpthermo-standalone .
+docker build -t brsynth/rpthermo-standalone:dev .
 ```
 
 Make sure that the following entry exists under Galaxy's destination tag in job_conf.xml:
@@ -59,15 +59,13 @@ Finally, make sure that you give the python scripts execution permission:
 chmod 755 *.py
 ```
 
-## Running the service
-
-```
-docker run --network host -p 8995:8995 brsynth/rpthermo
-```
-
 ## Running the tests
 
-TODO
+To run a test run, untar the test.tar.xz file and run the following command:
+
+```
+python run.py -input test/test_rpCofactors.tar -input_format tar -output test/test_rpThermo.tar
+```
 
 ### And coding style tests
 

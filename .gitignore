@@ -6,3 +6,5 @@ cache/
 rpSBML.py
 test/results/
 test/test_output.tar
+input_cache.tar.xz
+*.ipynb
