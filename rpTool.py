@@ -12,12 +12,11 @@ import gzip
 import re
 import urllib.request
 from ast import literal_eval
-from rpCache import rpCache
+import sys
 
-#local package
+from rpCache import rpCache
 import component_contribution
 
-logging.basicConfig(level=logging.ERROR)
 
 class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
@@ -90,17 +89,6 @@ class rpThermo:
         if cid in self.kegg_dG:
             #OLD#if 'component_contribution' in self.kegg_dG[cid] and self.kegg_dG[cid]['component_contribution']:
             ####### select the smallest one
-            '''
-            if len(self.kegg_dG[cid]['component_contribution'])==1:
-                return self.kegg_dG[cid]['component_contribution'][0]['compound_index'], self.kegg_dG[cid]['component_contribution'][0]['group_vector'], self.kegg_dG[cid]['component_contribution'][0]['pmap']['species']
-            else:
-                #select the lowest CID and make sure that there
-                toRet = {'CID': 'C99999'}
-                for cmp_dict in self.kegg_dG[cid]['component_contribution']:
-                    if int(cmp_dict['CID'][1:])<int(toRet['CID'][1:]):
-                        toRet = cmp_dict
-                return toRet['compound_index'], toRet['group_vector'], toRet['pmap']['species']
-            '''
             try:
                 ###### select the one with the most information
                 #return the smallest one that has all the information required
@@ -181,11 +169,12 @@ class rpThermo:
             self.logger.warning('Molecule with no explicit structure: '+str(srct_string))
             raise LookupError
         #compute pKas
-        try:
-            p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
-        except:
-            self.logger.warning('ChemAxon has encountered an error')
-            raise LookupError
+        #try:
+        p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
+        #except as e:
+        #    self.logger.warning(e)
+        #    self.logger.warning('ChemAxon has encountered an error')
+        #    raise LookupError
         p_kas = sorted([pka for pka in p_kas if self.min_pH<pka<self.max_pH], reverse=True)
         molecule = pybel.readstring('smi', major_ms_smiles)
         atom_bag, major_ms_charge = component_contribution.compound.atom_bag_and_charge(molecule)
@@ -258,8 +247,6 @@ class rpThermo:
         # add the potential related to the Mg ions
         if nMg > 0:
             dG0_prime += nMg*(self.RTlog10*nMg-self.mg_formation_energy)
-        #print('nH = %d, z = %d, dG0 = %.1f --> dG0\' = %.1f' %
-        #              (nH, z, dG0_f, dG0_prime))
         return dG0_prime
 
 
@@ -296,8 +283,8 @@ class rpThermo:
         elif group_vector is not None:
             for g_ind, g_count in group_vector:
                 G[g_ind, 0] += stoichio*g_count
-        else:
-            self.logger.warning('Cannot generate uncerstainty for '+str(kegg_cid))
+        #else:
+        #    self.logger.warning('Cannot generate uncerstainty for '+str(kegg_cid))
         dG0_prime = -self.RT*total
         return dG0_prime, X, G, physioParameter
 
@@ -311,9 +298,15 @@ class rpThermo:
     #
     #
     def dG0_uncertainty(self, X, G):
-        return 1.92*float(np.sqrt(X.T @ self.cc_preprocess['C1'] @X +
-                             X.T @ self.cc_preprocess['C2'] @G +
-                             G.T @ self.cc_preprocess['C3'] @G ))
+        try:
+            return 1.92*float(np.sqrt(X.T @ self.cc_preprocess['C1'] @X +
+                                 X.T @ self.cc_preprocess['C2'] @G +
+                                 G.T @ self.cc_preprocess['C3'] @G ))
+        except KeyError:
+            self.logger.warning('Cannot calculate uncertainty')
+            self.logger.warning(X)
+            self.logger.warning(G)
+            return 0.0
 
 
     ## takes a list of SBase libsbml objects and extracts the stochiometry from it
@@ -334,159 +327,139 @@ class rpThermo:
 
     ## Calculate a  species dG0_prime_o and its uncertainty
     #
-    #
-    def species_dfG_prime_o(self, species_annot, stoichio, species_mnxm=None):
+    # physioParameter = 1e-3 #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc....
+    def species_dfG_prime_o(self, rpsbml, species, stoichio, physioParameter=1e-3):
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
         dfG_prime_o = None
         cid = None
-        physioParameter = None #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc.... TODO: Next step is to have the user input his own
         #Try to find your species in the already calculated species
-        smiles = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('smiles').getChild(0).toXMLString()
-        inchi = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth').getChild('inchi').getChild(0).toXMLString()
-        #TODO: add the structure check
-        ################### use already calculated ##########################
+        brs_annot = rpsbml.readBRSYNTHAnnotation(species.getAnnotation())
+        miriam_annot = rpsbml.readMIRIAMAnnotation(species.getAnnotation())
+        smiles = brs_annot['smiles']
+        inchi = brs_annot['inchi']
+        ############ KEGG/MNX CID ##################
+        try:
+            cid = miriam_annot['kegg']
+        except KeyError:
+            cid = []
+        try:
+            mnxm = miriam_annot['metanetx']
+        except KeyError:
+            mnxm = []
+        #### KEGG ###
+        cid = [i for i in cid if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
+        for m in mnxm:
+            try:
+                c = self.userMNX_speXref[m]['kegg']
+                if not c in cid:
+                    cid.append(c)
+            except KeyError:
+                pass    
+        ## test to see if you can detect precalculated
+        if 'C00080' in cid:
+            dfG_prime_o = 0.0
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', 0.0, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', -17.1, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_uncert', 5.8, 'kj_per_mol')
+            ###TODO this is wrong.... need to define it better
+            X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
+            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+            self.logger.info('This is Hydrogen')
+            return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
+        for c in cid:
+            try:
+                dfG_prime_o, X, G, physioParameter = self.cmp_dfG_prime_o(c, stoichio)
+                dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
+                uncertainty = self.dG0_uncertainty(X, G)
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Using KEGG precomputed thermo: '+str(c))
+                return dfG_prime_o, X, G, physioParameter
+            except KeyError:
+                self.logger.warning('Cannot find by KEGG ID: '+str(c))
+                pass
+        ############# Pre-Calculated Structure #####################
+        #Precalculated
         if inchi in self.calculated_dG:
             X = self.calculated_dG[inchi]['X']
             G = self.calculated_dG[inchi]['G']
             dfG_prime_o = self.calculated_dG[inchi]['dfG_prime_o']
+            dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
+            uncertainty = self.dG0_uncertainty(X, G)
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+            self.logger.info('Used pre-calculated inchi: '+str(inchi))
+            return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
         elif smiles in self.calculated_dG:
             X = self.calculated_dG[smiles]['X']
             G = self.calculated_dG[smiles]['G']
             dfG_prime_o = self.calculated_dG[smiles]['dfG_prime_o']
-        else:
-            ################## use the KEGG id for precalculated ######################
-            #if not try to find it in cc_preprocess
-            cid = []
-            mnxm = []
-            bag = species_annot.getChild('RDF').getChild('Description').getChild('is').getChild('Bag')
-            for i in range(bag.getNumChildren()):
-                str_annot = bag.getChild(i).getAttrValue(0)
-                if str_annot.split('/')[-2]=='kegg.compound':
-                    cid.append(str_annot.split('/')[-1])
-                if str_annot.split('/')[-2]=='metanetx.chemical':
-                    mnxm.append(str_annot.split('/')[-1])
-            #### KEGG ###
-            cid = [i for i in cid if i[0]=='C'] #some of the KEGG compounds are drugs and start with a D
-            if len(cid)>=1:
-                cid = sorted(cid, key=lambda x: int(x.replace('C', '')))[0]
-            else:
-                #cid = None
-                #### MNXM ####
-                if len(mnxm)>=1:
-                    mnxm = sorted(mnxm, key=lambda x: (len(x), int(x.replace('MNXM', ''))))[0]
-                    try:
-                        cid = self.userMNX_speXref[mnxm]['kegg']
-                    except KeyError:
-                        cid = None
-                elif not species_mnxm==None:
-                    try:
-                        cid = self.userMNX_speXref[species_mnxm]['kegg']
-                    except KeyError:
-                        cid = None
-                else:
-                    mnxm = None
-                    cid = None
-            if cid:
-                try:
-                    dfG_prime_o, X, G, physioParameter = self.cmp_dfG_prime_o(
-                            cid,
-                            stoichio)
-                except KeyError:
-                    #TODO: seperate this part in a function instead of repeating the code
-                    #calculate using the structure, preferring the InChI over SMILES
-                    if inchi:
-                        try:
-                            dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                    'inchi',
-                                    inchi,
-                                    stoichio)
-                            self.calculated_dG[smiles] = {}
-                            self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                            self.calculated_dG[smiles]['X'] = X
-                            self.calculated_dG[smiles]['G'] = G
-                        except (KeyError, LookupError):
-                            self.logger.warning('Cannot use InChI to calculate the thermodynamics')
-                            pass
-                    #try for inchi
-                    if smiles and dfG_prime_o==None:
-                        try:
-                            dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                    'smiles',
-                                    smiles,
-                                    stoichio)
-                            self.calculated_dG[smiles] = {}
-                            self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                            self.calculated_dG[smiles]['X'] = X
-                            self.calculated_dG[smiles]['G'] = G
-                        except (KeyError, LookupError):
-                            self.logger.warning('Cannot use SMILES to calculate the thermodynamics')
-                            self.logger.error('Could not calculate the thermodynamics of '+str(cid)+' ('+str(inchi)+')')
-                            raise KeyError
-            ############## use the structure #########################
-            else:
-                if cid:
-                    self.logger.warning('Database does not contain thermodynamics for KEGG: '+str(cid))
-                #at last, if all fails use its structure to calculate dfG_prime_o
-                #try for smiles
-                if inchi:
-                    try:
-                        dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                'inchi',
-                                inchi,
-                                stoichio)
-                        self.calculated_dG[smiles] = {}
-                        self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                        self.calculated_dG[smiles]['X'] = X
-                        self.calculated_dG[smiles]['G'] = G
-                    except (KeyError, LookupError):
-                        self.logger.warning('Cannot use InChI to calculate the thermodynamics')
-                        pass
-                #try for inchi
-                if smiles and dfG_prime_o==None:
-                    try:
-                        dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
-                                'smiles',
-                                smiles,
-                                stoichio)
-                        self.calculated_dG[smiles] = {}
-                        self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
-                        self.calculated_dG[smiles]['X'] = X
-                        self.calculated_dG[smiles]['G'] = G
-                    except (KeyError, LookupError):
-                        self.logger.warning('Cannot use SMILES to calculate the thermodynamics')
-                        raise KeyError
-        #update the species dfG information
-        dfG_prime_m = None
-        if physioParameter==None:
-            physioParameter = 1e-3
-        if not dfG_prime_o==None:
-            write_dfG_prime_o = dfG_prime_o
             dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
-            write_dfG_prime_m = dfG_prime_m
-            write_uncertainty = self.dG0_uncertainty(X, G)
-        elif cid=='C00080':
-            write_dfG_prime_o = 0.0
-            write_dfG_prime_m = -17.1
-            write_uncertainty = 5.8
-            ### this is wrong.... need to define it better
-            X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
-            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
-        else:
-            write_dfG_prime_o = 0.0
-            write_dfG_prime_m = 0.0
-            write_uncertainty = 0.0
-            X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
-            G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
-        brsynth_annot = species_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(write_dfG_prime_o)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(write_dfG_prime_m)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(write_uncertainty)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
+            uncertainty = self.dG0_uncertainty(X, G)
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+            self.logger.info('Used pre-calculated smiles: '+str(smiles))
+            return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
+        ############### calculate Structure ########################
+        #CID
+        if inchi:
+            try:
+                dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
+                        'inchi',
+                        inchi,
+                        stoichio)
+                self.calculated_dG[smiles] = {}
+                self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
+                self.calculated_dG[smiles]['X'] = X
+                self.calculated_dG[smiles]['G'] = G
+                dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
+                uncertainty = self.dG0_uncertainty(X, G)
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from InChI structure: '+str(inchi))
+                return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
+            except LookupError:
+                self.logger.warning('Cannot calculate thermo using inchi structure: '+str(inchi))
+                pass
+        #try for inchi
+        if smiles:
+            try:
+                dfG_prime_o, X, G, additional_info = self.scrt_dfG_prime_o(
+                        'smiles',
+                        smiles,
+                        stoichio)
+                self.calculated_dG[smiles] = {}
+                self.calculated_dG[smiles]['dfG_prime_o'] = dfG_prime_o
+                self.calculated_dG[smiles]['X'] = X
+                self.calculated_dG[smiles]['G'] = G
+                dfG_prime_m = dfG_prime_o+self.concentrationCorrection([abs(stoichio)], [physioParameter])
+                uncertainty = self.dG0_uncertainty(X, G)
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+                rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+                self.logger.info('Calculating the thermo from SMILES structure: '+str(smiles))
+                return dfG_prime_o, X, G, physioParameter #we call physioParameter concentration later
+            except LookupError:
+                self.logger.warning('Cannot calculate thermo using smiles structure: '+str(smiles))
+                pass
+        self.logger.warning('Cannot calculate thermodynamics '+str(species.getId()))
+        self.logger.warning(inchi)
+        self.logger.warning(smiles)
+        dfG_prime_o = 0.0
+        dfG_prime_m = 0.0
+        uncertainty = 0.0
+        X = np.zeros((self.cc_preprocess['C1'].shape[0], 1))
+        G = np.zeros((self.cc_preprocess['C3'].shape[0], 1))
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(species, 'dfG_uncert', uncertainty, 'kj_per_mol')
+        return dfG_prime_o, X, G, physioParameter
 
 
     ## Calculate the pathway and reactions dG0_prime_o and its uncertainty
@@ -516,12 +489,13 @@ class rpThermo:
             reaction = rpsbml.model.getReaction(member.getIdRef())
             #react
             for pro in reaction.getListOfProducts():
+                dfG_prime_o = None
                 try:
                     if not pro.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
-                                rpsbml.model.getSpecies(pro.species).getAnnotation(),
-                                float(pro.stoichiometry),
-                                pro.species.split('__')[0])
+                                rpsbml,
+                                rpsbml.model.getSpecies(pro.species),
+                                float(pro.stoichiometry))
                         already_calculated[pro.species] = {}
                         already_calculated[pro.species]['dfG_prime_o'] = dfG_prime_o
                         already_calculated[pro.species]['X'] = X
@@ -547,12 +521,13 @@ class rpThermo:
                     X_path += X
                     G_path += G
             for rea in reaction.getListOfReactants():
+                dfG_prime_o = None
                 try:
                     if not rea.species in already_calculated:
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
-                                rpsbml.model.getSpecies(rea.species).getAnnotation(),
-                                -float(rea.stoichiometry),
-                                pro.species.split('__')[0])
+                                rpsbml,
+                                rpsbml.model.getSpecies(rea.species),
+                                -float(rea.stoichiometry))
                         already_calculated[rea.species] = {}
                         already_calculated[rea.species]['dfG_prime_o'] = dfG_prime_o
                         already_calculated[rea.species]['X'] = X
@@ -580,26 +555,15 @@ class rpThermo:
             #add the reaction thermo to the sbml
             #brsynth_annot = member.getIdRef().getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
             reac = rpsbml.model.getReaction(member.getIdRef())
-            reac_annot = reac.getAnnotation()
-            brsynth_annot = reac_annot.getChild('RDF').getChild('BRSynth').getChild('brsynth')
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(reaction_dfG_prime_o)+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration))+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-            tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_reaction, G_reaction))+'" /> </brsynth:brsynth>')
-            brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
-        #add the pathway thermo to the sbml
-        brsynth_annot = rp_pathway.getAnnotation().getChild('RDF').getChild('BRSynth').getChild('brsynth')
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_o units="kj_per_mol" value="'+str(pathway_dfG_prime_o)+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_o'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_prime_m units="kj_per_mol" value="'+str(pathway_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration))+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_prime_m'))
-        tmpAnnot = libsbml.XMLNode.convertStringToXMLNode('<brsynth:brsynth xmlns:brsynth="http://brsynth.eu"> <brsynth:dfG_uncert units="kj_per_mol" value="'+str(self.dG0_uncertainty(X_path, G_path))+'" /> </brsynth:brsynth>')
-        brsynth_annot.addChild(tmpAnnot.getChild('dfG_uncert'))
+            rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o', reaction_dfG_prime_o, 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), 'kj_per_mol')
+            rpsbml.addUpdateBRSynth(reac, 'dfG_uncert', self.dG0_uncertainty(X_reaction, G_reaction), 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', pathway_dfG_prime_o, 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', reaction_dfG_prime_o+self.concentrationCorrection(pathway_stoichio, pathway_concentration), 'kj_per_mol')
+        rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', self.dG0_uncertainty(X_path, G_path), 'kj_per_mol')
 
 
     #TODO: implement to return if the reaction is balanced and the reversibility index
-
     def isBalanced():
         """Function borrowed from the component contribution that checks is the per-atom
         difference in a reaction is balanced

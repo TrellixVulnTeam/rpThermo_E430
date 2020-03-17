@@ -1,93 +1,48 @@
-# Galaxy rpThermo
+# rpThermo
 
-Galaxy tool that reads a collection of rpSBML files, parses the IBIBSA annotation tags containing the SMILES or InChI structure to calculate the formation energy of the molecules, calculate the Gibbs free energy of reactions and finally calculate the Gibbs free energy of the hererologous pathway.
+Calculate the formation energy of chemical species and the gibbs free energy of reactions and the heterologous pathway. This tool uses the [component contribution](https://gitlab.com/elad.noor/component-contribution) method for determining the formation energy of chemical species that are either not annotated, or cannot be found in the internal database.  
 
-## Getting Started
+## Input
 
-This is a docker galaxy tools, and thus, the docker needs to be built locally where Galaxy is installed. 
+Required:
+* **-input**: (string) Path to the input file
+* **-input_format**: (string) Valid options: tar, sbml. Format of the input file
 
-### Prerequisites
+Advanced Options:
+* **-pathway_id**: (string, default=rp_pathway) ID of the heterologous pathway
+* **-server_url**: (string, default=http://0.0.0.0:8888) IP address of the running rpThermo REST service
 
-* Docker - [Install](https://docs.docker.com/v17.09/engine/installation/)
-* libSBML - [Anaconda library](https://anaconda.org/SBMLTeam/python-libsbml)
-* Component Contribution - [Git to the project](https://gitlab.com/elad.noor/component-contribution)
+## Output
 
-### Installing
+* **-output**: (string) Path to the output file 
 
-Create a new section in the Galaxy tool_conf.xml from the config file:
+## Dependencies
 
-```
-<section id="retro" name="Retro Nodes">
-  <tool file="/local/path/wrap_rpThermo.xml" />
-</section>
-```
+* [Marvin:](https://chemaxon.com/products/marvin)
+* Base docker image: [brsynth/rpBase](https://hub.docker.com/r/brsynth/rpbase)
+* Cache docker image: [brsynth/rpCache](https://hub.docker.com/r/brsynth/rpcache)
 
-Make sure that docker can be run as root. It's important to run the docker as root user since it will be calling a script that writes files to a temporary folder inside the docker before sending back to Galaxy:
+## Building the docker
 
-```
-sudo groupadd docker
-sudo gpasswd -a $USER docker
-sudo service docker restart
-```
-
-Build the docker image:
+NOTE: you need to have a valid [Marvin](https://chemaxon.com/products/marvin/download) account and Marvin licence (named license.cxl) in the root directory. Furthermore, the Dockerfile needs to be modified to have the addition of the source.list as per the deb instructions in the official Marvin website.
 
 ```
-docker build -t brsynth/rpthermo .
+docker build -t brsynth/rthermo-rest -f Dockerfile .
 ```
 
-Make sure that the following entry exists under Galaxy's destination tag in job_conf.xml:
+To run the service as localhost use the following service:
 
 ```
-    <destination id="docker_local" runner="local">
-      <param id="docker_enabled">true</param>
-      <param id="docker_sudo">false</param>
-      <param id="docker_auto_rm">true</param>
-      <param id="docker_set_user">root</param>
-    </destination>
+docker run -p 8888:8888 brsynth/rpthermo-rest
 ```
 
-And that the destination of the tool is refered under the tools tag of job_conf.xml:
+### Running the test
+
+To run the test untar the tar.xz folder and run the following command in the project folder:
 
 ```
-    <tool id="rpThermo" destination="docker_local" />
+python tool_rpThermo.py -input test/test_rpCofactors.tar -input_format tar -output test/test_rpThermo_comp.tar.xz -server_url http://0.0.0.0:8888/REST
 ```
-
-Finally, make sure that you give the python scripts execution permission:
-
-```
-chmod 755 *.py
-```
-
-## Running the service
-
-```
-docker run --network host -p 8995:8995 brsynth/rpthermo
-```
-
-## Running the tests
-
-TODO
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Logging
-
-in the 
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Galaxy](https://galaxyproject.org) - The Galaxy project
 
 ## Contributing
 
@@ -95,7 +50,7 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ## Versioning
 
-TODO
+v0.1
 
 ## Authors
 
