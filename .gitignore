@@ -6,3 +6,9 @@ cache/
 rpSBML.py
 test/results/
 test/test_output.tar
+input_cache.tar.xz
+*.ipynb
+license.cxl
+rpCache.py
+docker_install_marvin.txt
+test/
