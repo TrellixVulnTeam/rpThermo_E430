@@ -4,5 +4,9 @@ component_contribution/data/
 input_cache/
 cache/
 rpSBML.py
-test/test_output.tar
-test/results/
+test/
+.ipynb_checkpoints/
+*.ipynb
+docker_install_marvin.txt
+license.cxl
+rpCache.py
