@@ -4,8 +4,7 @@ component_contribution/data/
 input_cache/
 cache/
 rpSBML.py
-test/results/
-test/test_output.tar
+test/
 input_cache.tar.xz
 *.ipynb
 license.cxl
