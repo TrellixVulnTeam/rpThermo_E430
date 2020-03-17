@@ -19,7 +19,7 @@ import docker
 #
 def main(inputfile, input_format, pathway_id, output):
     docker_client = docker.from_env()
-    image_str = 'brsynth/rpthermo-standalone:dev'
+    image_str = 'brsynth/rpthermo-standalone'
     try:
         image = docker_client.images.get(image_str)
     except docker.errors.ImageNotFound:
