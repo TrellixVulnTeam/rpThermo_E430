@@ -1,53 +1,56 @@
-# rpThermodynamics
+# rpThermo
 
-Galaxy tool that reads a single or collection of rpSBML files, parses the SMILES or InChI structures to calculate the formation energy of the molecules. Either calculates the Gibbs free energy using databases derived from [Equilibrator](https://gitlab.com/equilibrator/component-contribution) or [Alberty et al.](https://www.biorxiv.org/content/biorxiv/early/2018/12/12/492819.full.pdf). Since the retosynthesis algorithm generates chemical species without corss-references to databases, the tool falls back to the [Component Contribution](https://github.com/eladnoor/component-contribution) method to estimate the Gibbs free energy of a reaction.
+Calculate the formation energy of chemical species and the gibbs free energy of reactions and the heterologous pathway. This tool uses the [component contribution](https://gitlab.com/elad.noor/component-contribution) method for determining the formation energy of chemical species that are either not annotated, or cannot be found in the internal database.  
 
-## Information Flow
+## Input
 
-### Input
+Required:
+* **-input**: (string) Path to the input file
+* **-input_format**: (string) Valid options: tar, sbml. Format of the input file
 
-Required information:
-* **Input rpSBML**: Either tar.xz collection of rpSBML or single rpSBML file
+Advanced Options:
+* **-pathway_id**: (string, default=rp_pathway) ID of the heterologous pathway
+* **-server_url**: (string, default=http://0.0.0.0:8888) IP address of the running rpThermo REST service
 
-Advanced options:
-* **Name of the heterologous pathway**: (default: rp_pathway) Groups ID of the heterologous pathway
-* **IP address of the rpFBA REST service**: IP address of the REST service
+## Output
 
-### Output
+* **-output**: (string) Path to the output file 
 
-* **rpThermo**: The output is a tar.xz archive containing a list of rpSBML files or a single SBML file
+## Dependencies
 
-## Installing
+* [Marvin:](https://chemaxon.com/products/marvin)
+* Base docker image: [brsynth/rpBase](https://hub.docker.com/r/brsynth/rpbase)
+* Cache docker image: [brsynth/rpCache](https://hub.docker.com/r/brsynth/rpcache)
 
-To build the image using the Dockerfile, use the following image:
+## Building the docker
+
+NOTE: you need to have a valid [Marvin](https://chemaxon.com/products/marvin/download) account and Marvin licence (named license.cxl) in the root directory. Furthermore, the Dockerfile needs to be modified to have the addition of the source.list as per the deb instructions in the official Marvin website.
 
 ```
-docker build -t brsynth/rpthermo-rest:dev .
+docker build -t brsynth/rthermo-rest:dev -f Dockerfile .
 ```
 
 To run the service as localhost use the following service:
 
 ```
-docker run -p 8882:8888 brsynth/rpthermo-rest:dev
+docker run -p 8888:8888 brsynth/rpthermo-rest:dev
 ```
 
-## Algorithm
+### Running the test
 
-The thermodyamics is calculated using the [Component Contribution](https://gitlab.com/equilibrator/component-contribution) method
+To run the test untar the tar.xz folder and run the following command in the project folder:
 
-## Prerequisites
-
-* Docker - [Install](https://docs.docker.com/v17.09/engine/installation/)
-* libSBML - [Anaconda library](https://anaconda.org/SBMLTeam/python-libsbml)
-* Component Contribution - [Git to the project](https://gitlab.com/elad.noor/component-contribution)
+```
+python tool_rpThermo.py -input test/test_rpCofactors.tar -input_format tar -output test/test_rpThermo_comp.tar.xz -server_url http://0.0.0.0:8888/REST
+```
 
 ## Contributing
 
-TODO
+Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## Versioning
 
-Version 0.1
+v0.1
 
 ## Authors
 
@@ -61,7 +64,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * Thomas Duigou
 * Joan Hérisson
-
-### How to cite rpThermodynamics?
-
-TODO
