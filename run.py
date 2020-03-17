@@ -41,12 +41,18 @@ def main(inputfile, input_format, pathway_id, output):
                    str(pathway_id),
                    '-output',
                    '/home/tmp_output/output.dat']
-        docker_client.containers.run(image_str, 
-                command, 
-                auto_remove=True, 
-                detach=False, 
-                volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
+        container = docker_client.containers.run(image_str, 
+                                                 command, 
+                                                 detach=True, 
+                                                 stderr=True, 
+                                                 volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
+        container.wait()
+        err = container.logs(stdout=False, stderr=True)
+        print(err)
         shutil.copy(tmpOutputFolder+'/output.dat', output)
+        container.remove()
+
+
 
 
 ##
