@@ -35,6 +35,8 @@ class rpToolCache(rpCache):
     #
     def _loadCache(self, fetchInputFiles=False):
         dirname = os.path.dirname(os.path.abspath( __file__ ))
+        if not os.path.exists(os.path.join(dirname, 'cache')):
+            os.mkdir(os.path.exists(os.path.join(dirname, 'cache')))
         ###################### Fetch the files if necessary ######################
         #cc_compounds.json.gz
         if not os.path.isfile(dirname+'/input_cache/cc_compounds.json.gz') or fetchInputFiles:
