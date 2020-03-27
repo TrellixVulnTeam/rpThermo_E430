@@ -17,7 +17,7 @@ import docker
 ##
 #
 #
-def main(inputfile, input_format, pathway_id, output):
+def main(inputfile, input_format, output, pathway_id='rp_pathway'):
     docker_client = docker.from_env()
     image_str = 'brsynth/rpthermo-standalone'
     try:
@@ -48,8 +48,10 @@ def main(inputfile, input_format, pathway_id, output):
                                                  volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
         container.wait()
         err = container.logs(stdout=False, stderr=True)
-        print(err)
-        shutil.copy(tmpOutputFolder+'/output.dat', output)
+        err_str = err.decode('utf-8')
+        print(err_str)
+        if not 'ERROR' in err_str:
+            shutil.copy(tmpOutputFolder+'/output.dat', output)
         container.remove()
 
 
@@ -65,4 +67,4 @@ if __name__ == "__main__":
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     params = parser.parse_args()
-    main(params.input, params.input_format, params.pathway_id, params.output)
+    main(params.input, params.input_format, params.output, params.pathway_id)
