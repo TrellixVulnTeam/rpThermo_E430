@@ -1,11 +1,10 @@
-FROM brsynth/rpcache
-
+FROM brsynth/rpcache:dev
 
 RUN apt-get update
-RUN apt-get install -y apt-transport-https gnupg apt-utils ca-certificates libuuid1 libblkid-dev libblkid1 openjdk-8-jdk
-#RUN echo 'deb https://<E-MAIL>:<API-KEY>@hub.chemaxon.com/artifactory/cxn-deb-release-local all main' >> /etc/apt/sources.list
-RUN apt-get update
-RUN apt-get install -y --allow-unauthenticated marvin
+RUN apt-get install -y openjdk-8-jdk
+#WARNING: the deb version of marvin must be added to the root folder
+COPY marvin_linux_20.9.deb /home/
+RUN dpkg -i /home/marvin_linux_20.9.deb
 RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda pandas && \
     conda install -c anaconda scipy
