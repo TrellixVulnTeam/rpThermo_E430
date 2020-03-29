@@ -23,12 +23,13 @@ import rpToolServe
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Python wrapper to add cofactors to generate rpSBML collection')
     parser.add_argument('-input', type=str)
-    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
+    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
+    parser.add_argument('-num_workers', type=int, default=10)
     params = parser.parse_args()
     if params.input_format=='tar':
-        rpToolServe.main(params.input, params.output, params.pathway_id)
+        rpToolServe.main(params.input, params.output, int(params.num_workers), params.pathway_id)
     elif params.input_format=='sbml':
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
@@ -37,7 +38,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single.rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.main(inputTar, outputTar, params.pathway_id)
+            rpToolServe.main(inputTar, outputTar, int(params.num_workers), params.pathway_id)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.rpsbml.xml')

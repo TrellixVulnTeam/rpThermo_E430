@@ -17,7 +17,7 @@ import docker
 ##
 #
 #
-def main(inputfile, input_format, output, pathway_id='rp_pathway'):
+def main(inputfile, input_format, output, num_workers=10, pathway_id='rp_pathway'):
     docker_client = docker.from_env()
     image_str = 'brsynth/rpthermo-standalone:dev'
     try:
@@ -39,6 +39,8 @@ def main(inputfile, input_format, output, pathway_id='rp_pathway'):
                    str(input_format),
                    '-pathway_id',
                    str(pathway_id),
+                   '-num_workers',
+                   str(num_workers),
                    '-output',
                    '/home/tmp_output/output.dat']
         container = docker_client.containers.run(image_str, 
@@ -63,8 +65,9 @@ def main(inputfile, input_format, output, pathway_id='rp_pathway'):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Python wrapper to add cofactors to generate rpSBML collection')
     parser.add_argument('-input', type=str)
-    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
+    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
+    parser.add_argument('-num_workers', type=int, default=10)
     params = parser.parse_args()
-    main(params.input, params.input_format, params.output, params.pathway_id)
+    main(params.input, params.input_format, params.output, params.num_workers, params.pathway_id)
