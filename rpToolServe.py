@@ -89,8 +89,7 @@ def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
                 jobs = {}
                 #split the files "equally" between all workers
-                sep_li = chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers)
-                for s_l in sep_li:
+                for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
                     jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder)] = s_l
                 for future in concurrent.futures.as_completed(jobs):
                     f_n = jobs[future]
