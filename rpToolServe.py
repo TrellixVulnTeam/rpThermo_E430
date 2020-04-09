@@ -11,6 +11,7 @@ import tarfile
 import glob
 import tempfile
 import shutil
+import logging
 
 sys.path.insert(0, '/home/')
 import rpTool as rpThermo
