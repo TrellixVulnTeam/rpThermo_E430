@@ -83,9 +83,12 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
 def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
-            tar = tarfile.open(fileobj=inputTar, mode='r:xz')
+            tar = tarfile.open(inputTar, mode='r:xz')
             tar.extractall(path=tmpInputFolder)
             tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
                 jobs = {}
                 #split the files "equally" between all workers
@@ -96,21 +99,56 @@ def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'
                     try:
                         data = future.result()
                     except Exception as exc:
-                        print('%r generated an exception: %s' % (f_n, exc))
-            with tarfile.open(fileobj=outputTar, mode='w:xz') as ot:
+                        logging.error('%r generated an exception: %s' % (f_n, exc))
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:xz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
                     file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
                     file_name += '.rpsbml.xml'
                     info = tarfile.TarInfo(file_name)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
 
+
+def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
+    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+        with tempfile.TemporaryDirectory() as tmpInputFolder:
+            tar = tarfile.open(inputTar, mode='r:xz')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+                rpsbml = rpSBML.rpSBML(fileName)
+                rpsbml.readSBML(sbml_path)
+                rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml = None
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:xz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    fileName += '.rpsbml.xml'
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
 
 
 ##
 #
 #
 def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+    runThermo_multi(inputTar, outputTar, num_workers, pathway_id)
+    #runThermo_hdd(inputTar, outputTar, num_workers, pathway_id)
+    '''
     with open(inputTar, 'rb') as inputTar_bytes:
         outputTar_bytes = io.BytesIO()
         runThermo_multi(inputTar_bytes, outputTar_bytes, num_workers, pathway_id)
@@ -119,3 +157,4 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
         ##########################
         with open(outputTar, 'wb') as f:
             shutil.copyfileobj(outputTar_bytes, f, length=131072)
+    '''
