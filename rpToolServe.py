@@ -36,8 +36,8 @@ def singleThermo_mem(rpthermo, member_name, rpsbml_string, pathway_id):
 #
 def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
     #loop through all of them and run FBA on them
-    with tarfile.open(fileobj=outTar, mode='w:xz') as tf:
-        with tarfile.open(fileobj=inputTar, mode='r:xz') as in_tf:
+    with tarfile.open(fileobj=outTar, mode='w:gz') as tf:
+        with tarfile.open(fileobj=inputTar, mode='r:gz') as in_tf:
             for member in in_tf.getmembers():
                 if not member.name=='':
                     data = singleThermo_mem(rpthermo,
@@ -84,7 +84,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
 def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
-            tar = tarfile.open(inputTar, mode='r:xz')
+            tar = tarfile.open(inputTar, mode='r:gz')
             tar.extractall(path=tmpInputFolder)
             tar.close()
             if len(glob.glob(tmpInputFolder+'/*'))==0:
@@ -104,10 +104,10 @@ def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'
             if len(glob.glob(tmpOutputFolder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
-            with tarfile.open(outputTar, mode='w:xz') as ot:
+            with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
                     file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
-                    file_name += '.rpsbml.xml'
+                    file_name += '.sbml.xml'
                     info = tarfile.TarInfo(file_name)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
@@ -117,7 +117,7 @@ def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'
 def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
-            tar = tarfile.open(inputTar, mode='r:xz')
+            tar = tarfile.open(inputTar, mode='r:gz')
             tar.extractall(path=tmpInputFolder)
             tar.close()
             if len(glob.glob(tmpInputFolder+'/*'))==0:
@@ -133,10 +133,10 @@ def runThermo_hdd(rpthermo, inputTar, outputTar, pathway_id='rp_pathway'):
             if len(glob.glob(tmpOutputFolder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')
                 return False
-            with tarfile.open(outputTar, mode='w:xz') as ot:
+            with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
                     fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
-                    fileName += '.rpsbml.xml'
+                    fileName += '.sbml.xml'
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
