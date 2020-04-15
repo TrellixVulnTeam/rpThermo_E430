@@ -17,6 +17,11 @@ import sys
 from rpCache import rpCache
 import component_contribution
 
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
 
 class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
