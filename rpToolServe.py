@@ -18,6 +18,8 @@ import rpTool as rpThermo
 import rpToolCache
 import rpSBML
 
+logging.disable(logging.INFO)
+logging.disable(logging.WARNING)
 
 import concurrent.futures
 
