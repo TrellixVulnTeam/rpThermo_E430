@@ -337,8 +337,16 @@ class rpThermo:
         #Try to find your species in the already calculated species
         brs_annot = rpsbml.readBRSYNTHAnnotation(species.getAnnotation())
         miriam_annot = rpsbml.readMIRIAMAnnotation(species.getAnnotation())
-        smiles = brs_annot['smiles']
-        inchi = brs_annot['inchi']
+        try:
+            smiles = brs_annot['smiles']
+        except KeyError:
+            logging.warning('The species does not have a SMILES value')
+            smiles = None
+        try:
+            inchi = brs_annot['inchi']
+        except KeyError:
+            logging.warning('The species does not have an InChI value')
+            inchi = None
         ############ KEGG/MNX CID ##################
         try:
             cid = miriam_annot['kegg']

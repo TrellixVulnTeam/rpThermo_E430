@@ -17,7 +17,7 @@ import docker
 ##
 #
 #
-def main(inputfile, input_format, pathway_id, output):
+def main(inputfile, input_format, output, num_workers=10, pathway_id='rp_pathway'):
     docker_client = docker.from_env()
     image_str = 'brsynth/rpthermo-standalone:dev'
     try:
@@ -39,14 +39,24 @@ def main(inputfile, input_format, pathway_id, output):
                    str(input_format),
                    '-pathway_id',
                    str(pathway_id),
+                   '-num_workers',
+                   str(num_workers),
                    '-output',
                    '/home/tmp_output/output.dat']
-        docker_client.containers.run(image_str, 
-                command, 
-                auto_remove=True, 
-                detach=False, 
-                volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
-        shutil.copy(tmpOutputFolder+'/output.dat', output)
+        container = docker_client.containers.run(image_str, 
+                                                 command, 
+                                                 detach=True, 
+                                                 stderr=True, 
+                                                 volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
+        container.wait()
+        err = container.logs(stdout=False, stderr=True)
+        err_str = err.decode('utf-8')
+        print(err_str)
+        if not 'ERROR' in err_str:
+            shutil.copy(tmpOutputFolder+'/output.dat', output)
+        container.remove()
+
+
 
 
 ##
@@ -55,8 +65,9 @@ def main(inputfile, input_format, pathway_id, output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Python wrapper to add cofactors to generate rpSBML collection')
     parser.add_argument('-input', type=str)
-    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
+    parser.add_argument('-pathway_id', type=str, default='rp_pathway')
+    parser.add_argument('-num_workers', type=int, default=10)
     params = parser.parse_args()
-    main(params.input, params.input_format, params.pathway_id, params.output)
+    main(params.input, params.input_format, params.output, params.num_workers, params.pathway_id)
