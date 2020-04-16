@@ -17,11 +17,6 @@ import sys
 from rpCache import rpCache
 import component_contribution
 
-logging.basicConfig(
-    level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
 
 class rpThermo:
     """Combination of equilibrator and group_contribution analysis to calculate the thermodymaics of the individual
@@ -369,7 +364,7 @@ class rpThermo:
                 if not c in cid:
                     cid.append(c)
             except KeyError:
-                pass    
+                pass
         ## test to see if you can detect precalculated
         if 'C00080' in cid:
             dfG_prime_o = 0.0

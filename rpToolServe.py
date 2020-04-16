@@ -18,10 +18,19 @@ import rpTool as rpThermo
 import rpToolCache
 import rpSBML
 
+import concurrent.futures
+
+'''
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+'''
+
 logging.disable(logging.INFO)
 logging.disable(logging.WARNING)
 
-import concurrent.futures
 
 ##
 #
@@ -39,7 +48,7 @@ def singleThermo_mem(rpthermo, member_name, rpsbml_string, pathway_id):
 def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
     #loop through all of them and run FBA on them
     with tarfile.open(fileobj=outTar, mode='w:gz') as tf:
-        with tarfile.open(fileobj=inputTar, mode='r:gz') as in_tf:
+        with tarfile.open(fileobj=inputTar, mode='r') as in_tf:
             for member in in_tf.getmembers():
                 if not member.name=='':
                     data = singleThermo_mem(rpthermo,
@@ -86,7 +95,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
 def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
-            tar = tarfile.open(inputTar, mode='r:gz')
+            tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
             tar.close()
             if len(glob.glob(tmpInputFolder+'/*'))==0:
@@ -123,7 +132,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
     rpthermo.cc_preprocess = rpcache.cc_preprocess
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
-            tar = tarfile.open(inputTar, mode='r:gz')
+            tar = tarfile.open(inputTar, mode='r')
             tar.extractall(path=tmpInputFolder)
             tar.close()
             if len(glob.glob(tmpInputFolder+'/*'))==0:
