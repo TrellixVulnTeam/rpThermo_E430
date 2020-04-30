@@ -18,15 +18,12 @@ import rpTool as rpThermo
 import rpToolCache
 import rpSBML
 
-import concurrent.futures
 
-'''
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-'''
 
 logging.disable(logging.INFO)
 logging.disable(logging.WARNING)
@@ -62,6 +59,13 @@ def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
 
 
 
+
+###################### Multi ###############
+
+
+## Seperate an array into equal lengths
+#
+#
 def chunkIt(seq, num):
     avg = len(seq) / float(num)
     out = []
@@ -88,11 +92,14 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
         rpsbml.writeSBML(tmpOutputFolder)
         rpsbml = None
 
+### concurent
+
+import concurrent.futures
 
 ## Multiprocessing implementation of the thermodynamics package
 #
 #
-def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -124,6 +131,44 @@ def runThermo_multi(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
     return True
 
+### multiprocessing
+
+import multiprocessing
+
+## Multiprocessing implementation of the thermodynamics package
+#
+#
+def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+    with tempfile.TemporaryDirectory() as tmpOutputFolder:
+        with tempfile.TemporaryDirectory() as tmpInputFolder:
+            tar = tarfile.open(inputTar, mode='r')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            ### construct the processes list and start
+            processes = []
+            for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
+                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder,))
+                processes.append(p)
+                p.start()
+            #wait for all to finish
+            for process in processes:
+                process.join()
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:gz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    file_name += '.sbml.xml'
+                    info = tarfile.TarInfo(file_name)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
+
+############################# single core ##########################
 
 def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
     rpcache = rpToolCache.rpToolCache()
@@ -162,15 +207,15 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
 #
 #
 def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
-    #runThermo_multi(inputTar, outputTar, num_workers, pathway_id)
-    runThermo_hdd(inputTar, outputTar, pathway_id)
-    '''
-    with open(inputTar, 'rb') as inputTar_bytes:
-        outputTar_bytes = io.BytesIO()
-        runThermo_multi(inputTar_bytes, outputTar_bytes, num_workers, pathway_id)
-        ########## IMPORTANT #####
-        outputTar_bytes.seek(0)
-        ##########################
-        with open(outputTar, 'wb') as f:
-            shutil.copyfileobj(outputTar_bytes, f, length=131072)
-    '''
+    if num_workers<=0:
+        logging.error('Cannot have less or 0 workers')
+        return False
+    elif num_workers>20:
+        logging.error('20 or more is a little too many number of workers')
+    elif num_workers==1:
+        runThermo_hdd(inputTar, outputTar, pathway_id)
+    else:
+        runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
+        runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
+
+

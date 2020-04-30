@@ -29,14 +29,6 @@ NOTE: you need to have a valid [Marvin](https://chemaxon.com/products/marvin/dow
 docker build -t brsynth/rpthermo-standalone:dev -f Dockerfile .
 ```
 
-## Installing
-
-To build the image using the Dockerfile, use the following image:
-
-```
-docker build -t brsynth/rpthermo-rest:dev .
-```
-
 ## Contributing
 
 TODO
