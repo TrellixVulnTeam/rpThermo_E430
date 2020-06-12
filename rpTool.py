@@ -169,8 +169,11 @@ class rpThermo:
             self.logger.warning('Molecule with no explicit structure: '+str(srct_string))
             raise LookupError
         #compute pKas
-        #try:
-        p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
+        try:
+            p_kas, major_ms_smiles = component_contribution.chemaxon.get_dissociation_constants(inchi)
+        except component_contribution.exceptions.ChemAxonRuntimeError:
+            self.logger.warning('ChemAxon has encountered an ChemAxonRuntimeError')
+            raise LookupError
         #except as e:
         #    self.logger.warning(e)
         #    self.logger.warning('ChemAxon has encountered an error')
