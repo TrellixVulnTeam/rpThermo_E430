@@ -15,18 +15,16 @@ import logging
 
 sys.path.insert(0, '/home/')
 import rpTool as rpThermo
-import rpToolCache
 import rpSBML
+import rpCache
 
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    #level=logging.DEBUG,
+    level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-
-logging.disable(logging.INFO)
-logging.disable(logging.WARNING)
 
 
 ##
@@ -80,10 +78,12 @@ def chunkIt(seq, num):
 #
 #
 def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
-    rpcache = rpToolCache.rpToolCache()
+    rpcache = rpCache.rpCache()
     rpthermo = rpThermo.rpThermo()
-    rpthermo.kegg_dG = rpcache.kegg_dG
-    rpthermo.cc_preprocess = rpcache.cc_preprocess
+    #rpthermo.kegg_dG = rpcache.kegg_dG
+    #rpthermo.cc_preprocess = rpcache.cc_preprocess
+    rpthermo.kegg_dG = rpcache.getKEGGdG()
+    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
     for sbml_path in sbml_paths:
         file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
         rpsbml = rpSBML.rpSBML(file_name)
@@ -173,8 +173,8 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
 def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
     rpcache = rpToolCache.rpToolCache()
     rpthermo = rpThermo.rpThermo()
-    rpthermo.kegg_dG = rpcache.kegg_dG
-    rpthermo.cc_preprocess = rpcache.cc_preprocess
+    rpthermo.kegg_dG = rpcache.getKEGGdG()
+    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -215,7 +215,7 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
     elif num_workers==1:
         runThermo_hdd(inputTar, outputTar, pathway_id)
     else:
-        runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
+        #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
         runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
 
 
