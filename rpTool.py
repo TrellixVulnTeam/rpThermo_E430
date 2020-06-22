@@ -503,6 +503,7 @@ class rpThermo:
                 dfG_prime_o = None
                 try:
                     if not pro.species in already_calculated:
+                        self.logger.debug('======== '+str(pro.species)+' ========')
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
                                 rpsbml,
                                 rpsbml.model.getSpecies(pro.species),
@@ -535,6 +536,7 @@ class rpThermo:
                 dfG_prime_o = None
                 try:
                     if not rea.species in already_calculated:
+                        self.logger.debug('======== '+str(pro.species)+' ========')
                         dfG_prime_o, X, G, concentration = self.species_dfG_prime_o(
                                 rpsbml,
                                 rpsbml.model.getSpecies(rea.species),

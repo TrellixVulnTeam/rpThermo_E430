@@ -171,7 +171,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
 ############################# single core ##########################
 
 def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
-    rpcache = rpToolCache.rpToolCache()
+    rpcache = rpCache.rpCache()
     rpthermo = rpThermo.rpThermo()
     rpthermo.kegg_dG = rpcache.getKEGGdG()
     rpthermo.cc_preprocess = rpcache.getCCpreprocess()
