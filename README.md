@@ -29,17 +29,9 @@ NOTE: you need to have a valid [Marvin](https://chemaxon.com/products/marvin/dow
 docker build -t brsynth/rthermo-standalone -f Dockerfile .
 ```
 
-## Running the tests
-
-To run a test run, untar the test.tar.xz file and run the following command:
-
-```
-python run.py -input test/test_rpCofactors.tar -input_format tar -output test/test_rpThermo.tar
-```
-
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+TODO
 
 ## Versioning
 
@@ -57,3 +49,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * Thomas Duigou
 * Joan Hérisson
+
+### How to cite rpThermodynamics?
+
+TODO
