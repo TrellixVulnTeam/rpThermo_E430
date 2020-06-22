@@ -16,7 +16,7 @@ ENV CHEMAXON_LICENSE_URL /home/license.cxl
 COPY component_contribution /home/component_contribution/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
-COPY galaxy/tool_rpThermo.py /home/
+COPY galaxy/code/tool_rpThermo.py /home/
 
 #COPY component_contribution_data.tar.xz /home/component_contribution/
 RUN tar xf /home/component_contribution/component_contribution_data.tar.xz -C /home/component_contribution/
