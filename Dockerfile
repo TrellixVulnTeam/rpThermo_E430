@@ -18,7 +18,7 @@ COPY input_cache.tar.xz /home/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
 COPY rpToolCache.py /home/
-COPY tool_rpThermo.py /home/
+COPY galaxy/tool_rpThermo.py /home/
 
 RUN tar xf /home/input_cache.tar.xz -C / && \
     mv /input_cache/* /home/input_cache/ && \
