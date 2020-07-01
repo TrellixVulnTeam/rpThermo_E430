@@ -2,6 +2,7 @@ __pycache__/
 component_contribution/__pycache__/
 component_contribution/data/
 input_cache/
+tool_rpThermo.py
 cache/
 rpSBML.py
 test/

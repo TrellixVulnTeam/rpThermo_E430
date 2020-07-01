@@ -212,6 +212,7 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
         return False
     elif num_workers>20:
         logging.error('20 or more is a little too many number of workers')
+        return False
     elif num_workers==1:
         runThermo_hdd(inputTar, outputTar, pathway_id)
     else:
