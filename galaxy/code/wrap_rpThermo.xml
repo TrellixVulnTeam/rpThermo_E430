@@ -14,8 +14,8 @@
   <inputs>
     <conditional name="input_type">
       <param name="input_format" type="select" label="Input/output format">
-        <option value="tar">TAR</option>
-        <option value="sbml" selected="True">SBML</option>
+        <option value="tar" selected="True">TAR</option>
+        <option value="sbml" >SBML</option>
       </param>
       <when value="tar">
         <param name="input" type="data" format="tar" label="Input file" />
