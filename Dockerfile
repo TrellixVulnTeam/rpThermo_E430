@@ -1,4 +1,4 @@
-FROM brsynth/rpcache
+FROM brsynth/rpcache:v1
 
 RUN apt-get update
 RUN apt-get install -y openjdk-8-jdk

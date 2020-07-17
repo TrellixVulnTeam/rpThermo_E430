@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
-    parser.add_argument('-num_workers', type=int, default=10)
+    parser.add_argument('-num_workers', type=int, default=1)
     params = parser.parse_args()
     if params.input_format=='tar':
         rpToolServe.main(params.input, params.output, int(params.num_workers), params.pathway_id)

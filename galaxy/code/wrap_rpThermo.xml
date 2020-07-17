@@ -1,7 +1,7 @@
 <tool id="rpThermo" name="Thermodynamics" version="0.1">
   <description>Calculate the formation energy of chemical species and the Gibbs free energy of their reactions and pathways in an SBML</description>
   <requirements>
-		<container type="docker">brsynth/rpthermo-standalone</container>
+		<container type="docker">brsynth/rpthermo-standalone:v1</container>
   </requirements>
   <stdio>
 		<regex match="WARNING:" level="warning" />
