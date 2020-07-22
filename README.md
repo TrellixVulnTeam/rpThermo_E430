@@ -26,7 +26,7 @@ Advanced Options:
 NOTE: you need to have a valid [Marvin](https://chemaxon.com/products/marvin/download) account and Marvin licence (named license.cxl) in the root directory. Furthermore, the Dockerfile needs to be modified to have the addition of the source.list as per the deb instructions in the official Marvin website.
 
 ```
-docker build -t brsynth/rpthermo-standalone -f Dockerfile .
+docker build -t brsynth/rpthermo-standalone:v2 -f Dockerfile .
 ```
 
 ## Contributing
