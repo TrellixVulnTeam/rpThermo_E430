@@ -108,7 +108,7 @@ import multiprocessing
 ## Multiprocessing implementation of the thermodynamics package
 #
 #
-def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -120,7 +120,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
             ### construct the processes list and start
             processes = []
             for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder,))
+                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder, ph, ionic_strength, pMg, temp_k))
                 processes.append(p)
                 p.start()
             #wait for all to finish
@@ -176,7 +176,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
 ##
 #
 #
-def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     if num_workers<=0:
         logging.error('Cannot have less or 0 workers')
         return False
