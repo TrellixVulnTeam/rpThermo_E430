@@ -247,7 +247,7 @@ class rpComponentContribution:
     ## Calculate the formation energy of a compoud at a given physilogicval concentration (1e-3 by default)
     #
     #
-    def cmp_dfG_prime_o(self, kegg_cid, stoichio, physioParameter=1e-3):
+    def cmp_dfG_prime_o(self, kegg_cid, stoichio, physioParam=1e-3):
         ########### dG0_f ###########
         #WARNING: we are ignoring gas phase even if it would be valid in some cases (O2 for example)
         physioParameter = None #determine the phase for the concentration adjustement
@@ -260,7 +260,7 @@ class rpComponentContribution:
             #note that this should change if a user wants to input his own values....
             #WARNING: we are taking the first one only
             if species_list[0]['phase']=='aqueous':
-                physioParameter = physioParameter
+                physioParameter = physioParam
             else:
                 self.logger.warning('Overwriting the input physiological concentration of '+str(physioParameter)+' since the phase state is not aqueous')
                 physioParameter = 1.0
@@ -305,12 +305,25 @@ class rpComponentContribution:
     ## takes a list of SBase libsbml objects and extracts the stochiometry from it
     #
     #TODO: extract the concentration (if defined) instead of using the milliMolar concentration adjustment
-    def concentrationCorrection(self, stoichio, conc=None):
+    def concentrationCorrection(self, stoichio, conc=None, physioParam=1e-3):
         #if no concentrations are specified then we assume millimolar adjustment
         #return self.R*self.temperature*(stoichio*np.log(conc))
+        self.logger.debug(stoichio)
+        self.logger.debug(conc)
+        self.logger.debug(len(stoichio))
+        passConc = []
         if conc==None:
-            conc = [1e-3]*len(stochio)
-        return self.R*self.temperature*sum([sto*np.log(co) for sto, co in zip(stoichio, conc)])
+            passConc = []
+            for i in range(len(stochio)):
+                passConc.append(physioParam)
+        else:
+            for i in conc:
+                if i==None:
+                    passConc.append(physioParam)
+                else:
+                    passConc.append(i)
+        self.logger.debug(passConc)
+        return self.R*self.temperature*sum([sto*np.log(co) for sto, co in zip(stoichio, passConc)])
 
 
     ###########################################################
@@ -322,6 +335,7 @@ class rpComponentContribution:
     #
     # physioParameter = 1e-3 #this paraemter determines the concentration of the copound for the adjustemet, (dG_prime_m). It assumes physiological conditions ie 1e-3 for aquaeus and 1 for gas, solid etc....
     def species(self, libsbml_species, stoichio, physioParameter=1e-3):
+        self.logger.debug('physioParameter: '+str(physioParameter))
         #check to see if there are mutliple, non-deprecated, MNX ids in annotations
         X = None
         G = None
@@ -463,21 +477,27 @@ class rpComponentContribution:
                 if not pro.species in already_calculated:
                     self.logger.debug('======== '+str(pro.species)+' ========')
                     dfG_prime_o, X, G, concentration = self.species(self.rpsbml.model.getSpecies(pro.species), float(pro.stoichiometry))
+                    self.logger.debug('dfG_prime_o: '+str(dfG_prime_o))
+                    self.logger.debug('concentration: '+str(concentration))
                     already_calculated[pro.species] = {}
                     already_calculated[pro.species]['dfG_prime_o'] = dfG_prime_o
                     already_calculated[pro.species]['X'] = X
                     already_calculated[pro.species]['G'] = G
                     already_calculated[pro.species]['concentration'] = concentration
+                    reaction_stoichio.append(float(pro.stoichiometry))
+                    reaction_concentration.append(float(concentration))
                 else:
                     dfG_prime_o = already_calculated[pro.species]['dfG_prime_o']
                     X = already_calculated[pro.species]['X']
                     G = already_calculated[pro.species]['G']
                     concentration = already_calculated[pro.species]['concentration']
+                    self.logger.debug('dfG_prime_o: '+str(dfG_prime_o))
+                    self.logger.debug('concentration: '+str(concentration))
+                    reaction_stoichio.append(float(pro.stoichiometry))
+                    reaction_concentration.append(float(concentration))
             except (KeyError, LookupError):
                 self.logger.error('Failed to calculate the thermodynamics for '+str(pro.species))
                 continue
-            reaction_stoichio.append(float(pro.stoichiometry))
-            reaction_concentration.append(float(concentration))
             if not dfG_prime_o==None:
                 dfG_prime_o += dfG_prime_o*pro.stoichiometry
                 X_reaction += X
@@ -512,11 +532,11 @@ class rpComponentContribution:
                 G_reaction += G
             else:
                 self.logger.warning('There is not dfG_prime_o value for reactant: '+str(rea))
-        reac = self.rpsbml.model.getReaction(member.getIdRef())
+        #reac = self.rpsbml.model.getReaction(member.getIdRef())
         if write_results:
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m', dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_uncert', self.dG0_uncertainty(X_reaction, G_reaction), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', self.dG0_uncertainty(X_reaction, G_reaction), 'kj_per_mol')
         return dfG_prime_o, dfG_prime_o+self.concentrationCorrection(reaction_stoichio, reaction_concentration), self.dG0_uncertainty(X_reaction, G_reaction)
 
 

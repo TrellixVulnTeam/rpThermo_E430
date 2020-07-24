@@ -1,8 +1,13 @@
 import rpEquilibrator
 import rpComponentContribution
+import logging
+import numpy as np
 
 class rpThermo:
     def __init__(self, rpsbml=None, kegg_dG={}, cc_preprocess={}, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+        self.logger = logging.getLogger(__name__)
+        self.logger.info('Started instance of rpThermo')
+
         self.rpsbml = rpsbml
         self.ph = ph
         self.ionic_strength = ionic_strength
@@ -13,7 +18,7 @@ class rpThermo:
         self.rpcomponentcontribution.kegg_dG = kegg_dG 
         self.rpcomponentcontribution.cc_preprocess = cc_preprocess
 
-    def rpSBMLPass(rpsbml):
+    def rpSBMLPass(self, rpsbml):
         self.rpsbml = rpsbml
         self.rpequilibrator.rpsbml = rpsbml
         self.rpcomponentcontribution.rpsbml = rpsbml
@@ -28,7 +33,7 @@ class rpThermo:
         rp_pathway = groups.getGroup(pathway_id)
         if not rp_pathway:
             self.logger.error('Cannot retreive the pathway: '+str(pathway_id))
-            reurn False
+            return False
         pathway_balanced = []
         pathway_reversibility_index = []
         pathway_reversibility_index_error = []
@@ -70,11 +75,11 @@ class rpThermo:
                     return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
         if write_results:
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o', np.mean(pathway_standard_dg_prime), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_o_std', np.std(pathway_standard_dg_prime), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m', np.mean(pathway_physiological_dg_prime), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_prime_m_std', np.std(pathway_physiological_dg_prime), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_uncert', np.mean(pathway_standard_dg_prime_error), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(reac, 'dfG_uncert_std', np.std(pathway_standard_dg_prime_error), 'kj_per_mol')
-        return (np.median(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime)), (np.median(pathway_physiological_dg_prime), np.std(pathway_physiological_dg_prime)), (np.median(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime))
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', np.sum(pathway_standard_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o_std', np.std(pathway_standard_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', np.sum(pathway_physiological_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m_std', np.std(pathway_physiological_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', np.sum(pathway_standard_dg_prime_error), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert_std', np.std(pathway_standard_dg_prime_error), 'kj_per_mol')
+        return (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime)), (np.sum(pathway_physiological_dg_prime), np.std(pathway_physiological_dg_prime)), (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime))
 

@@ -140,7 +140,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
 
 ############################# single core ##########################
 
-def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
+def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     rpcache = rpCache.rpCache()
     #rpthermo = rpThermo.rpThermo()
     rpthermo = rpTool.rpThermo(kegg_dG=rpcache.getKEGGdG(), cc_preprocess=rpcache.getCCpreprocess(), ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)

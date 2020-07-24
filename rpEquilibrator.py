@@ -1,7 +1,6 @@
 from equilibrator_api import ComponentContribution, Q_
 import equilibrator_cache
 import logging
-import numpy as np
 
 
 class rpEquilibrator:
@@ -26,6 +25,8 @@ class rpEquilibrator:
         #-bigg
         #-MNX
         -inchikey
+        
+        TODO: metanetx.chemical:MNXM7 + bigg.metabolite:pi
         """
         annot = libsbml_species.getAnnotation()
         if not annot:
@@ -101,18 +102,18 @@ class rpEquilibrator:
             physiological_dg_prime = self.cc.physiological_dg_prime(rxn)
             ln_reversibility_index = self.cc.ln_reversibility_index(rxn)
             self.logger.debug(rxn.is_balanced())
-            self.logger.debug('ln_reversibility_index: '+str(self.cc.ln_reversibility_index(rxn)))
+            self.logger.debug('ln_reversibility_index: '+str(ln_reversibility_index.value.m))
             self.logger.debug('standard_dg.value.m: '+str(standard_dg.value.m))
             self.logger.debug('standard_dg.error.m: '+str(standard_dg.error.m))
             self.logger.debug('standard_dg_prime.value.m: '+str(standard_dg_prime.value.m))
             self.logger.debug('standard_dg_prime.error.m: '+str(standard_dg_prime.error.m))
             self.logger.debug('physiological_dg_prime.value.m: '+str(physiological_dg_prime.value.m))
             self.logger.debug('physiological_dg_prime.error.m: '+str(physiological_dg_prime.error.m))
-            if write_resuts:
+            if write_results:
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', standard_dg_prime.value.m, 'kj_per_mol')
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', physiological_dg_prime.value.m, 'kj_per_mol')
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', standard_dg.error.m, 'kj_per_mol')
-                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', self.cc.ln_reversibility_index(rxn)))
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', ln_reversibility_index.value.m)
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'balanced', rxn.is_balanced())
             return (rxn.is_balanced(),
                    (float(ln_reversibility_index.value.m), float(ln_reversibility_index.error.m)),
@@ -120,9 +121,11 @@ class rpEquilibrator:
                    (float(standard_dg_prime.value.m), float(standard_dg_prime.error.m)), 
                    (float(physiological_dg_prime.value.m), float(physiological_dg_prime.error.m)))
         except equilibrator_cache.exceptions.ParseException:
-            self.logger.error('One of the reaction species cannot be parsed by equilibrator: '+str(reac_str))
+            self.logger.warning('One of the reaction species cannot be parsed by equilibrator: '+str(reac_str))
             return False
-
+        except equilibrator_cache.exceptions.MissingDissociationConstantsException:
+            self.logger.warning('Some of the species have not been pre-caclulated using ChemAxon')
+            return False
 
     def MDF():
         pass
