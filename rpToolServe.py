@@ -14,48 +14,20 @@ import shutil
 import logging
 
 sys.path.insert(0, '/home/')
-import rpTool as rpThermo
+#import rpComponentContribution
+#import rpEquilibrator
+import rpTool
 import rpSBML
 import rpCache
 
 
 logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
-
-
-##
-#
-#
-def singleThermo_mem(rpthermo, member_name, rpsbml_string, pathway_id):
-    #open one of the rp SBML files
-    rpsbml = rpSBML.rpSBML(member_name, libsbml.readSBMLFromString(rpsbml_string))
-    rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
-    return libsbml.writeSBMLToString(rpsbml.document).encode('utf-8')
-
-
-##
-#
-#
-def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
-    #loop through all of them and run FBA on them
-    with tarfile.open(fileobj=outTar, mode='w:gz') as tf:
-        with tarfile.open(fileobj=inputTar, mode='r') as in_tf:
-            for member in in_tf.getmembers():
-                if not member.name=='':
-                    data = singleThermo_mem(rpthermo,
-                            member.name,
-                            in_tf.extractfile(member).read().decode("utf-8"),
-                            pathway_id)
-                    fiOut = io.BytesIO(data)
-                    info = tarfile.TarInfo(member.name)
-                    info.size = len(data)
-                    tf.addfile(tarinfo=info, fileobj=fiOut)
-
-
 
 
 ###################### Multi ###############
@@ -77,18 +49,16 @@ def chunkIt(seq, num):
 ## Less memory effecient than the _hdd method but faster
 #
 #
-def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
+def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     rpcache = rpCache.rpCache()
-    rpthermo = rpThermo.rpThermo()
-    #rpthermo.kegg_dG = rpcache.kegg_dG
-    #rpthermo.cc_preprocess = rpcache.cc_preprocess
-    rpthermo.kegg_dG = rpcache.getKEGGdG()
-    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
+    #rpthermo = rpThermo.rpThermo()
+    rpthermo = rpTool.rpThermo(kegg_dG=rpcache.getKEGGdG(), cc_preprocess=rpcache.getCCpreprocess(), ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     for sbml_path in sbml_paths:
         file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
-        rpsbml = rpSBML.rpSBML(file_name)
-        rpsbml.readSBML(sbml_path)
-        rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+        rpsbml = rpSBML.rpSBML(file_name, path=sbml_path)
+        #rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+        rpthermo.rpSBMLPass(rpsbml)
+        rpthermo.pathway(pathway_id)
         rpsbml.writeSBML(tmpOutputFolder)
         rpsbml = None
 
@@ -172,9 +142,8 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
 
 def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
     rpcache = rpCache.rpCache()
-    rpthermo = rpThermo.rpThermo()
-    rpthermo.kegg_dG = rpcache.getKEGGdG()
-    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
+    #rpthermo = rpThermo.rpThermo()
+    rpthermo = rpTool.rpThermo(kegg_dG=rpcache.getKEGGdG(), cc_preprocess=rpcache.getCCpreprocess(), ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -185,9 +154,10 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
                 return False
             for sbml_path in glob.glob(tmpInputFolder+'/*'):
                 fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
-                rpsbml = rpSBML.rpSBML(fileName)
-                rpsbml.readSBML(sbml_path)
-                rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                #rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                rpthermo.rpSBMLPass(rpsbml)
+                res = rpthermo.pathway(pathway_id)
                 rpsbml.writeSBML(tmpOutputFolder)
                 rpsbml = None
             if len(glob.glob(tmpOutputFolder+'/*'))==0:
