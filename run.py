@@ -17,7 +17,15 @@ import docker
 ##
 #
 #
-def main(inputfile, input_format, output, num_workers=10, pathway_id='rp_pathway'):
+def main(inputfile, 
+         input_format,
+         output,
+         num_workers=10,
+         pathway_id='rp_pathway',
+         ph=7.0,
+         ionic_strength=200.0,
+         pMg=10.0,
+         temp_k=298.15):
     docker_client = docker.from_env()
     image_str = 'brsynth/rpthermo-standalone:v2'
     try:
@@ -41,6 +49,14 @@ def main(inputfile, input_format, output, num_workers=10, pathway_id='rp_pathway
                    str(pathway_id),
                    '-num_workers',
                    str(num_workers),
+                   '-ph',
+                   str(ph),
+                   '-ionic_strength',
+                   str(ionic_strength),
+                   '-pMg',
+                   str(pMg),
+                   '-temp_k',
+                   str(temp_k),
                    '-output',
                    '/home/tmp_output/output.dat']
         container = docker_client.containers.run(image_str, 
@@ -70,5 +86,9 @@ if __name__ == "__main__":
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
     parser.add_argument('-num_workers', type=int, default=10)
+    parser.add_argument('-ph', type=float, default=7.0)
+    parser.add_argument('-ionic_strength', type=float, default=200.0)
+    parser.add_argument('-pMg', type=float, default=10.0)
+    parser.add_argument('-temp_k', type=float, default=298.15)
     params = parser.parse_args()
-    main(params.input, params.input_format, params.output, params.num_workers, params.pathway_id)
+    main(params.input, params.input_format, params.output, params.num_workers, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
