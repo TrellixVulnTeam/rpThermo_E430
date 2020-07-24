@@ -1,6 +1,7 @@
 __pycache__/
-component_contribution/__pycache__/
-component_contribution/data/
+*.swp
+component_contribution_legacy/__pycache__/
+component_contribution_legacy/data/
 input_cache/
 tool_rpThermo.py
 cache/
