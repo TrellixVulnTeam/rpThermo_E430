@@ -281,7 +281,8 @@ class rpEquilibrator:
             pp.update_standard_dgs()
             mdf_sol = pp.calc_mdf()
             to_ret_mdf = float(mdf_sol.mdf)
-            self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', float(mdf_sol.mdf), 'kj_per_mol')
+            if write_results:
+                self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', float(mdf_sol.mdf), 'kj_per_mol')
         return to_ret_mdf
 
 

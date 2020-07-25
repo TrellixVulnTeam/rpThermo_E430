@@ -173,6 +173,22 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
     return True
 
 
+def runMDF_hdd(input_tar, output_tar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
+    with tempfile.TemporaryDirectory() as tmpInputFolder:
+        tar = tarfile.open(input_tar, mode='r')
+        tar.extractall(path=tmpInputFolder)
+        tar.close()
+        if len(glob.glob(tmpInputFolder+'/*'))==0:
+            logging.error('Input file is empty')
+            return False
+        for sbml_path in glob.glob(tmpInputFolder+'/*'):
+            fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
+            rpequilibrator.rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+            res = rpequilibrator.MDF(pathway_id, True)
+    return True
+    
+
 ##
 #
 #
@@ -188,5 +204,4 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, i
     else:
         #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
         runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
-
 
