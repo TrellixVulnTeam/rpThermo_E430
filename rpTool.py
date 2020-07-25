@@ -7,7 +7,6 @@ class rpThermo:
     def __init__(self, rpsbml=None, kegg_dG={}, cc_preprocess={}, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
         self.logger = logging.getLogger(__name__)
         self.logger.info('Started instance of rpThermo')
-
         self.rpsbml = rpsbml
         self.ph = ph
         self.ionic_strength = ionic_strength
