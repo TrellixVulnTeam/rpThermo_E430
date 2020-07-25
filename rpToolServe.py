@@ -22,9 +22,9 @@ import rpCache
 
 
 logging.basicConfig(
-    #level=logging.DEBUG,
+    level=logging.DEBUG,
     #level=logging.WARNING,
-    level=logging.ERROR,
+    #level=logging.ERROR,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
 )
@@ -173,19 +173,35 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
     return True
 
 
-def runMDF_hdd(input_tar, output_tar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    import rpEquilibrator
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
-        tar = tarfile.open(input_tar, mode='r')
-        tar.extractall(path=tmpInputFolder)
-        tar.close()
-        if len(glob.glob(tmpInputFolder+'/*'))==0:
-            logging.error('Input file is empty')
-            return False
-        for sbml_path in glob.glob(tmpInputFolder+'/*'):
-            fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
-            rpequilibrator.rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
-            res = rpequilibrator.MDF(pathway_id, True)
+        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+            tar = tarfile.open(inputTar, mode='r')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                logging.debug('=========== '+str(sbml_path)+' ============')
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '') 
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                rpequilibrator.rpsbml = rpsbml
+                res = rpequilibrator.MDF(pathway_id, True)
+                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml = None
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:gz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    fileName += '.sbml.xml'
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
     return True
     
 

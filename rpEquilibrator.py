@@ -3,6 +3,7 @@ import equilibrator_cache
 import logging
 import json
 import tempfile
+import os
 
 
 class rpEquilibrator:
@@ -73,6 +74,14 @@ class rpEquilibrator:
                         return 'CHEBI:'+str(miriam_dict['chebi'][int_list.index(min(int_list))])
                     except ValueError:
                         self.logger.warning('There is a non int value in: '+str(miriam_dict['chebi']))
+            elif 'metanetx' in miriam_dict:
+                if miriam_dict['metanetx']:
+                    try:
+                        #take the lowest value
+                        int_list = [int(i.replace('MNXM', '')) for i in miriam_dict['metanetx']]
+                        iden_str = 'metanetx.chemical:'+str(miriam_dict['metanetx'][int_list.index(min(int_list))])
+                    except ValueError:
+                        self.logger.warning('There is a non int value in: '+str(miriam_dict['metanetx']))
             elif 'inchikey' in miriam_dict:
                 if miriam_dict['inchikey']:
                     if len(miriam_dict['inchikey'])==1:
@@ -225,6 +234,14 @@ class rpEquilibrator:
                             iden_str = 'CHEBI:'+str(miriam_dict['chebi'][int_list.index(min(int_list))])
                         except ValueError:
                             self.logger.warning('There is a non int value in: '+str(miriam_dict['chebi']))
+                if 'metanetx' in miriam_dict and not iden_str:
+                    if miriam_dict['metanetx']:
+                        try:
+                            #take the lowest value
+                            int_list = [int(i.replace('MNXM', '')) for i in miriam_dict['metanetx']]
+                            iden_str = 'metanetx.chemical:'+str(miriam_dict['metanetx'][int_list.index(min(int_list))])
+                        except ValueError:
+                            self.logger.warning('There is a non int value in: '+str(miriam_dict['metanetx']))
                 if 'inchikey' in miriam_dict and not iden_str:
                     if miriam_dict['inchikey']:
                         if len(miriam_dict['inchikey'])==1:
@@ -235,7 +252,6 @@ class rpEquilibrator:
                             iden_str = miriam_dict['inchikey'][0]
                 if not iden_str:
                     self.logger.warning('Could not extract string input for '+str(miriam_dict))
-                    return False
                 fo.write(str(spe_id)+"\t"+str(iden_str)+"\t\t\n")
             fo.write("\t\t\t\n")
             #TODO: perhaps find a better way than just setting this to 1
@@ -274,15 +290,27 @@ class rpEquilibrator:
         """
         from equilibrator_pathway import Pathway
         to_ret_mdf = None
+        groups = self.rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             path_sbtab = os.path.join(tmpOutputFolder, 'tmp_sbtab.tsv')
             self.toNetworkSBtab(path_sbtab, pathway_id)
-            pp = Pathway.from_sbtab(path_sbtab, comp_contrib=self.cc)
-            pp.update_standard_dgs()
-            mdf_sol = pp.calc_mdf()
-            to_ret_mdf = float(mdf_sol.mdf)
-            if write_results:
-                self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', float(mdf_sol.mdf), 'kj_per_mol')
+            try:
+                pp = Pathway.from_sbtab(path_sbtab, comp_contrib=self.cc)
+                pp.update_standard_dgs()
+                mdf_sol = pp.calc_mdf()
+                #plt_reac_plot = mdf_sol.reaction_plot
+                #plt_cmp_plot = mdf_sol.compound_plot
+                to_ret_mdf = float(mdf_sol.mdf.m)
+                if write_results:
+                    self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', float(mdf_sol.mdf.m), 'kj_per_mol')
+            except KeyError as e:
+                self.logger.warning('Cannot calculate MDF')
+                self.logger.warning(e)
+                self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
+            except equilibrator_cache.exceptions.MissingDissociationConstantsException as e:
+                self.logger.warning('Some species are invalid: '+str(e))
+                self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
         return to_ret_mdf
 
 

@@ -10,7 +10,7 @@ RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda scipy && \
     conda install -y -c conda-forge python-levenshtein
 
-RUN pip install equilibrator-api equilibrator-cache
+RUN pip install equilibrator-api equilibrator-cache equilibrator-pathway
 
 #WARNING: make sure that you download the Marvin licence and paste it at the root of the Dockerfile
 COPY license.cxl /home/
@@ -20,8 +20,12 @@ COPY component_contribution_legacy /home/component_contribution_legacy/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
 COPY galaxy/code/tool_rpThermo.py /home/
-COPY rpComponentContribution.py /home
+COPY galaxy/code/tool_rpMDF.py /home/
+COPY rpComponentContribution.py /home/
 COPY rpEquilibrator.py /home/
+
+RUN mkdir /home/data/
+COPY data/mnx_default_conc.json /home/data/
 
 #COPY component_contribution_data.tar.xz /home/component_contribution/
 RUN tar xf /home/component_contribution_legacy/component_contribution_data.tar.xz -C /home/component_contribution_legacy/
