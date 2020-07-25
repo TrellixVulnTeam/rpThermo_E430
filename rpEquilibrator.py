@@ -76,8 +76,9 @@ class rpEquilibrator:
 
     def reaction(self, libsbml_reaction, write_results=False):
         """
-        Build the string reaction from a libSBML reaction object to send to equilibrator and return the reversibility index, the different 
+        Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
         """
+        #TODO: when an inchikey is passed, (and you don't have any other xref) and equilibrator finds the correct species then update the MIRIAM annotations
         reac_str = ''
         for rea in libsbml_reaction.getListOfReactants():
             rea_str = self._makeSpeciesStr(self.rpsbml.model.getSpecies(rea.getSpecies()))
@@ -127,7 +128,30 @@ class rpEquilibrator:
             self.logger.warning('Some of the species have not been pre-caclulated using ChemAxon')
             return False
 
-    def MDF():
+
+    def toNetworkSBtab(self, pathway_id='rp_pathway'):
+        """
+        Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF
+        """
+        groups = self.rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        if not rp_pathway:
+            self.logger.error('Cannot retreive the pathway: '+str(pathway_id))
+            return False
+        for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+            react_str = self.reaction(react, False)
+        pass
+
+    def toEquilibratorSBtab(self):
+        """
+        Convert an rpSBML pathway to the SBtab network file required for MDF
+        """
+        pass
+
+    def MDF(self):
+        """
+        Perform MDF analysis on the 
+        """
         pass
 
 #used to initialise and download the data for equilibrator

@@ -79,7 +79,7 @@ class rpThermo:
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o_std', np.std(pathway_standard_dg_prime), 'kj_per_mol')
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', np.sum(pathway_physiological_dg_prime), 'kj_per_mol')
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m_std', np.std(pathway_physiological_dg_prime), 'kj_per_mol')
-            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', np.sum(pathway_standard_dg_prime_error), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', np.mean(pathway_standard_dg_prime_error), 'kj_per_mol')
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert_std', np.std(pathway_standard_dg_prime_error), 'kj_per_mol')
         return (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime)), (np.sum(pathway_physiological_dg_prime), np.std(pathway_physiological_dg_prime)), (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime))
 
