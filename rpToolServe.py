@@ -21,15 +21,6 @@ import rpSBML
 import rpCache
 
 
-logging.basicConfig(
-    #level=logging.DEBUG,
-    #level=logging.WARNING,
-    level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
-
 ###################### Multi ###############
 
 
@@ -61,6 +52,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength
         rpthermo.pathway(pathway_id)
         rpsbml.writeSBML(tmpOutputFolder)
         rpsbml = None
+    return True
 
 ### concurent
 
@@ -209,15 +201,20 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_stren
 #
 #
 def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
-    if num_workers<=0:
-        logging.error('Cannot have less or 0 workers')
-        return False
-    elif num_workers>20:
-        logging.error('20 or more is a little too many number of workers')
-        return False
-    elif num_workers==1:
-        runThermo_hdd(inputTar, outputTar, pathway_id)
-    else:
-        #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
-        runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
-
+    with tempfile.TemporaryDirectory() as tmpCountFolder:
+        num_models = 0
+        tar = tarfile.open(input_path, mode='r')
+        tar.extractall(path=tmpCountFolder)
+        num_models = len(glob.glob(tmpCountFolder+'/*'))
+        tar.close()
+        if num_workers<=0:
+            logging.error('Cannot have less or 0 workers')
+            return False
+        if num_models==0:
+            logging.warning('The input tar file seems to be empty') 
+            return False
+        if num_workers==1 or num_models==1:
+            return runThermo_hdd(inputTar, outputTar, pathway_id)
+        else:
+            #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
+            return runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)

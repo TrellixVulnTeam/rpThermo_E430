@@ -43,7 +43,7 @@ class rpThermo:
         pathway_physiological_dg_prime = []
         pathway_physiological_dg_prime_error = []
         for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
-            res = self.rpequilibrator.reaction(react, write_results)
+            res = self.rpequilibrator.reactionThermo(react, write_results)
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
                 pathway_balanced.append(res[0])
