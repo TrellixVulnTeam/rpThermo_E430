@@ -208,9 +208,9 @@ class rpEquilibrator:
         dfG_prime_m = dfG_prime_o+self.cc.RT*sum([sto*np.log(co) for sto, co in zip(S, [physio_param]*len(S))])
         uncertainty = np_S.T@sigma_vecs
         if write_results:
-            self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_prime_o', dfG_prime_o, 'kj_per_mol')
-            self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_prime_m', dfG_prime_m, 'kj_per_mol')
-            self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_uncert', uncertainty, 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', uncertainty, 'kj_per_mol')
         return dfG_prime_o, dfG_prime_m, uncertainty
 
     
@@ -223,14 +223,14 @@ class rpEquilibrator:
 
     #################### native equilibrator-api functions ###############
 
-    def species(self, libsbml_species, write_results=False):
+    def speciesStrQuery(self, libsbml_species, write_results=False):
         """
         Return the formation energy of a chemical species
         """
         return False
 
 
-    def reactionThermo(self, libsbml_reaction, write_results=False):
+    def reactionStrQuery(self, libsbml_reaction, write_results=False):
         """
         Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
         """
@@ -250,11 +250,11 @@ class rpEquilibrator:
             self.logger.debug('physiological_dg_prime.value.m: '+str(physiological_dg_prime.value.m))
             self.logger.debug('physiological_dg_prime.error.m: '+str(physiological_dg_prime.error.m))
             if write_results:
-                self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_prime_o', standard_dg_prime.value.m, 'kj_per_mol')
-                self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_prime_m', physiological_dg_prime.value.m, 'kj_per_mol')
-                self.rpsbml.addupdatebrsynth(libsbml_reaction, 'dfg_uncert', standard_dg.error.m, 'kj_per_mol')
-                self.rpsbml.addupdatebrsynth(libsbml_reaction, 'reversibility_index', ln_reversibility_index.value.m)
-                self.rpsbml.addupdatebrsynth(libsbml_reaction, 'balanced', rxn.is_balanced())
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', standard_dg_prime.value.m, 'kj_per_mol')
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', physiological_dg_prime.value.m, 'kj_per_mol')
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', standard_dg.error.m, 'kj_per_mol')
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', ln_reversibility_index.value.m)
+                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'balanced', rxn.is_balanced())
             return (rxn.is_balanced(),
                    (float(ln_reversibility_index.value.m), float(ln_reversibility_index.error.m)),
                    (float(standard_dg.value.m), float(standard_dg.error.m)),
@@ -385,10 +385,12 @@ class rpEquilibrator:
             fo.write("!!SBtab TableID='Thermodynamics' TableType='Quantity' StandardConcentration='M'\t\t\t\n")
             fo.write("!QuantityType\t!Reaction\t!Compound\t!Value\t!Unit\n")
             for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
-                brs_annot = self.rpsbml.readBRSYNTHAnnotation(react)
+                brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
                 try:
                     #TODO: switch to dfG_prime_m when you are sure how to calculate it using the native equilibrator function
-                    fo.write("reaction gibbs energy\t"+str(react.getId())+"\t\t"+str(brs_annot['dfG_prime_o'])+"\tkJ/mol\n")
+                    if brs_annot['dfG_prime_o']=={}:
+                        raise KeyError
+                    fo.write("reaction gibbs energy\t"+str(react.getId())+"\t\t"+str(brs_annot['dfG_prime_o']['value'])+"\tkJ/mol\n")
                 except KeyError:
                     self.logger.error('The following reaction does not seem to have thermodynamic values')
                     return False
@@ -409,6 +411,7 @@ class rpEquilibrator:
                 pp = Pathway.from_sbtab(path_sbtab, comp_contrib=self.cc)
                 pp.update_standard_dgs()
                 mdf_sol = pp.calc_mdf()
+                #mdf_sol = pp.mdf_analysis()
                 #plt_reac_plot = mdf_sol.reaction_plot
                 #plt_cmp_plot = mdf_sol.compound_plot
                 to_ret_mdf = float(mdf_sol.mdf.m)

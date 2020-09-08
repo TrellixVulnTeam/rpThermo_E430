@@ -25,6 +25,7 @@
 from __future__ import absolute_import
 
 import numpy as np
+import sys
 import pybel
 from scipy.special import logsumexp
 from pkg_resources import resource_stream

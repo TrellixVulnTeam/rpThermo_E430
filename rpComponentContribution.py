@@ -1,5 +1,6 @@
 import numpy as np
-import pybel
+import sys
+import pybel #required openbabel==2.4.1
 import json
 from scipy.special import logsumexp
 import copy

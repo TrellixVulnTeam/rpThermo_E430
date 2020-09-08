@@ -11,7 +11,10 @@ class Molecule(object):
 
     # for more rendering options visit:
     # http://www.ggasoftware.com/opensource/indigo/api/options#rendering
+    
+    #Replacing openbabel from 2.x to 3.x
     _obElements = openbabel.OBElementTable()
+    #_obElements = openbabel
     _obSmarts = openbabel.OBSmartsPattern()
     
     @staticmethod

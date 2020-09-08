@@ -27,6 +27,7 @@ from collections import defaultdict
 
 import openbabel
 import pybel
+
 from six import iteritems
 
 
