@@ -546,7 +546,7 @@ class rpComponentContribution:
     #
     # WARNING: we skip the components that we fail to calculate the thermodynamics and
     # and as a consequence the pathway thermo score ignore that step --> need to at least report it
-    #DEPRECATED: should not calculate the thermodynamics of the pathway in that fashion
+    #DEPRECATED: using the sum of reaction thermo instead of directly calculating the pathway thermo
     def pathway_drG_prime_m(self, rpsbml, pathId='rp_pathway'):
         #calculate the number of species that are involded in the pathway
         #for each species calculate the ddG_prime_m and its uncertainty

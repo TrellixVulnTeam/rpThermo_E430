@@ -4,10 +4,15 @@ import logging
 import numpy as np
 
 class rpThermo:
+    """
+    TODO: drop the formation energy of chemical species in the SBML file
+    """
     def __init__(self, rpsbml=None, kegg_dG={}, cc_preprocess={}, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
         self.logger = logging.getLogger(__name__)
         self.logger.info('Started instance of rpThermo')
         self.rpsbml = rpsbml
+        if rpsbml:
+            self.rpSBMLPass(self.rpsbml)
         self.ph = ph
         self.ionic_strength = ionic_strength
         self.pMg = pMg
@@ -17,6 +22,9 @@ class rpThermo:
         self.rpcomponentcontribution.kegg_dG = kegg_dG 
         self.rpcomponentcontribution.cc_preprocess = cc_preprocess
 
+    ## Small contructor function that passes the rpsbml object to the other classes
+    #
+    #
     def rpSBMLPass(self, rpsbml):
         self.rpsbml = rpsbml
         self.rpequilibrator.rpsbml = rpsbml
@@ -44,6 +52,7 @@ class rpThermo:
         pathway_physiological_dg_prime_error = []
         for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
             res = self.rpequilibrator.reaction(react, write_results)
+            self.logger.info('Trying equilibrator_api string query')
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
                 pathway_balanced.append(res[0])
@@ -57,9 +66,9 @@ class rpThermo:
                 pathway_physiological_dg_prime.append(res[4][0])
                 pathway_physiological_dg_prime_error.append(res[4][1])
             else:
-                self.logger.debug('Reverting to legacy component contribution')
-                standard_dg_prime, physiological_dg_prime, dg_prime_uncert = self.rpcomponentcontribution.reaction(react, write_results)
-                res = self.rpcomponentcontribution.reaction(react, write_results)
+                self.logger.info('Native equilibrator string query failed'
+                self.logger.info('Trying equilibrator_api component contribution')
+                res = self.rpequilibrator.reactionCmpQuery(react, write_results)
                 if res:
                     pathway_standard_dg_prime.append(res[0])
                     pathway_standard_dg_prime_error.append(res[2])
@@ -70,8 +79,22 @@ class rpThermo:
                     pathway_reversibility_index.append(None)
                     pathway_reversibility_index_error.append(None)
                 else:
-                    self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
-                    return False
+                    self.logger.info('Equilibrator_api component contribution query failed')
+                    self.logger.info('Reverting to legacy component contribution')
+                    standard_dg_prime, physiological_dg_prime, dg_prime_uncert = self.rpcomponentcontribution.reaction(react, write_results)
+                    res = self.rpcomponentcontribution.reaction(react, write_results)
+                    if res:
+                        pathway_standard_dg_prime.append(res[0])
+                        pathway_standard_dg_prime_error.append(res[2])
+                        pathway_physiological_dg_prime.append(res[1])
+                        pathway_physiological_dg_prime_error.append(res[2])
+                        #TODO: need to implement
+                        pathway_balanced.append(None)
+                        pathway_reversibility_index.append(None)
+                        pathway_reversibility_index_error.append(None)
+                    else:
+                        self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
+                        return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
         if write_results:
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', np.sum(pathway_standard_dg_prime), 'kj_per_mol')

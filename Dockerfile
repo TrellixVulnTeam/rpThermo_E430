@@ -10,7 +10,19 @@ RUN conda install -y -c openbabel openbabel && \
     conda install -y -c anaconda scipy && \
     conda install -y -c conda-forge python-levenshtein
 
-RUN pip install equilibrator-api equilibrator-cache equilibrator-pathway
+#install the develop version of equilibrator
+#RUN pip install equilibrator-api equilibrator-cache equilibrator-pathway
+RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-api.git
+RUN cd equilibrator-api && pip install && cd ..
+
+#equilibrator-pathway
+RUN pip install equilibrator-pathway
+#RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-pathway.git
+##RUN cd equilibrator-pathway && pip install && cd ..
+
+#equilibrator-assets
+RUN git clone https://gitlab.com/equilibrator/equilibrator-assets.git
+RUN cd equilibrator-assets && pip install && cd ..
 
 #WARNING: make sure that you download the Marvin licence and paste it at the root of the Dockerfile
 COPY license.cxl /home/
