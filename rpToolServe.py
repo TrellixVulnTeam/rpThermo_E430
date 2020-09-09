@@ -50,7 +50,6 @@ def chunkIt(seq, num):
 #
 #
 def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
-    rpcache = rpCache.rpCache()
     #rpthermo = rpThermo.rpThermo()
     rpthermo = rpTool.rpThermo(kegg_dG=kegg_dG, cc_preprocess=cc_preprocess, ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     for sbml_path in sbml_paths:
@@ -70,6 +69,7 @@ import concurrent.futures
 #
 #
 def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    rpcache = rpCache.rpCache()
     cc_preprocess = rpcache.getCCpreprocess()
     kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
@@ -111,6 +111,7 @@ import multiprocessing
 #
 #
 def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    rpcache = rpCache.rpCache()
     cc_preprocess = rpcache.getCCpreprocess()
     kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
@@ -203,6 +204,36 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_stren
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
                     fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
                     fileName += '.sbml.xml'
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
+
+
+def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, thermo_id='dfG_prime_o', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    import rpEquilibrator
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
+    with tempfile.TemporaryDirectory() as tmpInputFolder:
+        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+            tar = tarfile.open(inputTar, mode='r')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                logging.debug('=========== '+str(sbml_path)+' ============')
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '') 
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                rpequilibrator.rpsbml = rpsbml
+                status = rpequilibrator.toNetworkSBtab(os.path.join(tmpOutputFolder, fileName+'.tsv'), pathway_id, thermo_id, fba_id)
+                rpsbml = None
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:gz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1]
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
