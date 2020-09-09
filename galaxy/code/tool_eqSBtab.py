@@ -48,7 +48,7 @@ if __name__ == "__main__":
         logging.error('Cannot interpret '+str(params.thermo_id))
         exit(1)
     if params.input_format=='tar':
-        rpToolServe.runMDF_hdd(params.input, params.output, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+        rpToolServe.runEqSBtab_hdd(params.input, params.output, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
     elif params.input_format=='sbml':
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single.rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.runMDF_hdd(inputTar, outputTar, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+            rpToolServe.runEqSBtab_hdd(inputTar, outputTar, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.rpsbml.xml')
