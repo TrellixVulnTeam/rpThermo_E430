@@ -49,10 +49,10 @@ def chunkIt(seq, num):
 ## Less memory effecient than the _hdd method but faster
 #
 #
-def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     rpcache = rpCache.rpCache()
     #rpthermo = rpThermo.rpThermo()
-    rpthermo = rpTool.rpThermo(kegg_dG=rpcache.getKEGGdG(), cc_preprocess=rpcache.getCCpreprocess(), ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
+    rpthermo = rpTool.rpThermo(kegg_dG=kegg_dG, cc_preprocess=cc_preprocess, ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     for sbml_path in sbml_paths:
         file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
         rpsbml = rpSBML.rpSBML(file_name, path=sbml_path)
@@ -69,7 +69,9 @@ import concurrent.futures
 ## Multiprocessing implementation of the thermodynamics package
 #
 #
-def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    cc_preprocess = rpcache.getCCpreprocess()
+    kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -82,7 +84,7 @@ def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='
                 jobs = {}
                 #split the files "equally" between all workers
                 for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder)] = s_l
+                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k)] = s_l
                 for future in concurrent.futures.as_completed(jobs):
                     f_n = jobs[future]
                     try:
@@ -109,6 +111,8 @@ import multiprocessing
 #
 #
 def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    cc_preprocess = rpcache.getCCpreprocess()
+    kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -120,7 +124,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
             ### construct the processes list and start
             processes = []
             for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder, ph, ionic_strength, pMg, temp_k))
+                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k))
                 processes.append(p)
                 p.start()
             #wait for all to finish

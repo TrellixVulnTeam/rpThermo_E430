@@ -270,14 +270,17 @@ class rpEquilibrator:
 
     ## Create a network SBtab file used to calculate the pathway MDF
     #
-    #
-    def toNetworkSBtab(self, output, pathway_id='rp_pathway', add_thermo=True):
+    # @param output String input of the output path of the TSV file
+    # @param pathway_id String of the pathway id on which to generate the SBtab file
+    # @param thermo_id String of the thermodynamic id to use. If None, then its not added. If not added, then these values are not added and we rely on Equilibrator to find these values
+    # @param fba_id String of the FBA id to output to the file. If None, then default values of 1.0 for all reactions is added
+    # @return Boolean determining the status
+    def toNetworkSBtab(self, output, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction'):
         """
         Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF
         """
         groups = self.rpsbml.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
-        all_reac_ids = []
         if not rp_pathway:
             self.logger.error('Cannot retreive the pathway: '+str(pathway_id))
             return False
@@ -296,7 +299,6 @@ class rpEquilibrator:
             fo.write("!!SBtab TableID='Reaction' TableType='Reaction'\t\t\t\n")
             fo.write("!ID\t!ReactionFormula\t\t\n")
             for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
-                all_reac_ids.append(react.getId())
                 react_str = self._makeReactionStr(react, 'id', True)
                 if react_str:
                     fo.write(str(react.getId())+"\t"+str(react_str)+"\n")
@@ -352,12 +354,21 @@ class rpEquilibrator:
                     self.logger.warning('Could not extract string input for '+str(miriam_dict))
                 fo.write(str(spe_id)+"\t"+str(iden_str)+"\t\t\n")
             fo.write("\t\t\t\n")
+            ################## Add FBA values ##############################
             #TODO: perhaps find a better way than just setting this to 1
-            ################## Add the concentration bounds ##############################
             fo.write("!!SBtab TableID='Flux' TableType='Quantity' Unit='mM/s'\t\t\t\n")
             fo.write("!QuantityType\t!Reaction\t!Value\t\n")
-            for rea_id in all_reac_ids:
-                fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
+            for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+                brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
+                if fba_id:
+                    if fba_id in react:
+                        fo.write("rate of reaction\t"+str(rea_id)+"\t"+str(brs_annot[fba_id]['value'])+"\t\n"
+                    else:
+                        self.logger.warning('Cannot retreive the FBA value '+str(fba_id)+'. Setting a default value of 1.')
+                        fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
+                else:
+                    fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
+            ################## Add the concentration bounds ##############################
             fo.write("\t\t\t\n")
             fo.write("!!SBtab TableID='ConcentrationConstraint' TableType='Quantity' Unit='mM'\t\t\t\n")
             fo.write("!QuantityType\t!Compound\t!Min\t!Max\n")
@@ -382,22 +393,30 @@ class rpEquilibrator:
                     fo.write("concentration\t"+spe.getId()+"\t0.001\t10\n")
             fo.write("\t\t\t\n")
             ############################ Add the thermo value ###########################
-            fo.write("!!SBtab TableID='Thermodynamics' TableType='Quantity' StandardConcentration='M'\t\t\t\n")
-            fo.write("!QuantityType\t!Reaction\t!Compound\t!Value\t!Unit\n")
-            for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
-                brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
-                try:
-                    #TODO: switch to dfG_prime_m when you are sure how to calculate it using the native equilibrator function
-                    if brs_annot['dfG_prime_o']=={}:
-                        raise KeyError
-                    fo.write("reaction gibbs energy\t"+str(react.getId())+"\t\t"+str(brs_annot['dfG_prime_o']['value'])+"\tkJ/mol\n")
-                except KeyError:
-                    self.logger.error('The following reaction does not seem to have thermodynamic values')
-                    return False
+            #TODO: perform on the fly thermodynamic calculations when the values are not included within the SBML file
+            if thermo_id:
+                fo.write("!!SBtab TableID='Thermodynamics' TableType='Quantity' StandardConcentration='M'\t\t\t\n")
+                fo.write("!QuantityType\t!Reaction\t!Compound\t!Value\t!Unit\n")
+                for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+                    brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
+                    try:
+                        #TODO: switch to dfG_prime_m when you are sure how to calculate it using the native equilibrator function
+                        if thermo_id in brs_annot:
+                            if brs_annot[thermo_id]:
+                                fo.write("reaction gibbs energy\t"+str(react.getId())+"\t\t"+str(brs_annot['dfG_prime_o']['value'])+"\tkJ/mol\n")
+                            else:
+                                self.logger.error(str(thermo_id)+' is empty. Was rpThermodynamics run on this SBML? Aborting...')
+                                return False
+                        else:
+                            self.logger.error('There is no '+str(thermo_id)+' in the reaction '+str((react.getId()))
+                            return False
+                    except KeyError:
+                        self.logger.error('The reaction '+str(react.getId())+' does not seem to have the following thermodynamic value: '+str(thermo_id))
+                        return False
         return True
 
 
-    def MDF(self, pathway_id='rp_pathway', write_results=True):
+    def MDF(self, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', write_results=True):
         """
         Perform MDF analysis on the retropath pathways
         """
@@ -406,7 +425,10 @@ class rpEquilibrator:
         rp_pathway = groups.getGroup(pathway_id)
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             path_sbtab = os.path.join(tmpOutputFolder, 'tmp_sbtab.tsv')
-            self.toNetworkSBtab(path_sbtab, pathway_id)
+            sbtab_status = self.toNetworkSBtab(path_sbtab, pathway_id)
+            if not sbtab_status:
+                self.logger.error('There was a problem generating the SBtab... aborting')
+                return 0.0
             try:
                 pp = Pathway.from_sbtab(path_sbtab, comp_contrib=self.cc)
                 pp.update_standard_dgs()

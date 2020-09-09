@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Created on September 21 2019
+Created on 9 September 2020
 
 @author: Melchior du Lac
-@description: Extract the sink from an SBML into RP2 friendly format
+@description: Generate SBtab files for Equilibrator
 
 """
 import argparse
@@ -41,7 +41,7 @@ def main(inputfile,
             exit(1)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         shutil.copy(inputfile, tmpOutputFolder+'/input.dat')
-        command = ['/home/tool_rpMDF.py',
+        command = ['/home/tool_eqSBtab.py',
                    '-input',
                    '/home/tmp_output/input.dat',
                    '-input_format',
