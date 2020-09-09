@@ -362,7 +362,10 @@ class rpEquilibrator:
                 brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
                 if fba_id:
                     if fba_id in react:
-                        fo.write("rate of reaction\t"+str(rea_id)+"\t"+str(brs_annot[fba_id]['value'])+"\t\n"
+                        #the saved value is mmol_per_gDW_per_hr while rpEq required mmol_per_s
+                        #WARNING: rpEq says that these values are mMol/s while here we have mMol/gDw/h. However not changing since this would mean doing /3600 and
+                        #given the values that seems wrong
+                        fo.write("rate of reaction\t"+str(rea_id)+"\t"+str(brs_annot[fba_id]['value'])+"\t\n")
                     else:
                         self.logger.warning('Cannot retreive the FBA value '+str(fba_id)+'. Setting a default value of 1.')
                         fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
@@ -408,7 +411,7 @@ class rpEquilibrator:
                                 self.logger.error(str(thermo_id)+' is empty. Was rpThermodynamics run on this SBML? Aborting...')
                                 return False
                         else:
-                            self.logger.error('There is no '+str(thermo_id)+' in the reaction '+str((react.getId()))
+                            self.logger.error('There is no '+str(thermo_id)+' in the reaction '+str(react.getId()))
                             return False
                     except KeyError:
                         self.logger.error('The reaction '+str(react.getId())+' does not seem to have the following thermodynamic value: '+str(thermo_id))
