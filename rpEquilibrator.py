@@ -298,7 +298,12 @@ class rpEquilibrator:
             ####################### Make the reaction list ######################
             fo.write("!!SBtab TableID='Reaction' TableType='Reaction'\t\t\t\n")
             fo.write("!ID\t!ReactionFormula\t\t\n")
-            for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+            #TODO: need to sort it in the reverse order
+            #TODO: use the rpGraph to sort the pathway in the right order
+            ordered_react = [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]
+            ordered_react.sort(key=lambda x: int(x.getId().replace('RP', '')), reverse=True)
+            #for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:   
+            for react in ordered_react:
                 react_str = self._makeReactionStr(react, 'id', True)
                 if react_str:
                     fo.write(str(react.getId())+"\t"+str(react_str)+"\n")
