@@ -203,7 +203,7 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_stren
 def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
     with tempfile.TemporaryDirectory() as tmpCountFolder:
         num_models = 0
-        tar = tarfile.open(input_path, mode='r')
+        tar = tarfile.open(inputTar, mode='r')
         tar.extractall(path=tmpCountFolder)
         num_models = len(glob.glob(tmpCountFolder+'/*'))
         tar.close()
