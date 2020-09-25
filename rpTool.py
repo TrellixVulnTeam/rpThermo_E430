@@ -2,6 +2,7 @@ import rpEquilibrator
 import rpComponentContribution
 import logging
 import numpy as np
+import json
 
 class rpThermo:
     def __init__(self, rpsbml=None, kegg_dG={}, cc_preprocess={}, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
@@ -12,14 +13,20 @@ class rpThermo:
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.rpequilibrator = rpEquilibrator.rpEquilibrator(self.rpsbml, self.ph, self.ionic_strength, self.pMg, self.temp_k)
+        #BUG from equilibrator that throws a JSON decode error when loading Component Contribution cache and quilt
+        #perhaps due to the multiprocessing
+        try:
+            self.rpequilibrator = rpEquilibrator.rpEquilibrator(self.rpsbml, self.ph, self.ionic_strength, self.pMg, self.temp_k)
+        except json.decoder.JSONDecodeError:
+            self.rpequilibrator = None
         self.rpcomponentcontribution = rpComponentContribution.rpComponentContribution(self.rpsbml, self.ph, self.pMg, self.ionic_strength/100.0, self.temp_k)
         self.rpcomponentcontribution.kegg_dG = kegg_dG 
         self.rpcomponentcontribution.cc_preprocess = cc_preprocess
 
     def rpSBMLPass(self, rpsbml):
         self.rpsbml = rpsbml
-        self.rpequilibrator.rpsbml = rpsbml
+        if self.rpequilibrator:
+            self.rpequilibrator.rpsbml = rpsbml
         self.rpcomponentcontribution.rpsbml = rpsbml
 
 
@@ -43,7 +50,10 @@ class rpThermo:
         pathway_physiological_dg_prime = []
         pathway_physiological_dg_prime_error = []
         for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
-            res = self.rpequilibrator.reactionThermo(react, write_results)
+            if self.rpequilibrator:
+                res = self.rpequilibrator.reactionThermo(react, write_results)
+            else:
+                res = None
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
                 pathway_balanced.append(res[0])
