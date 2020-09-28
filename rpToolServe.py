@@ -258,8 +258,11 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, i
         if num_models==0:
             logging.warning('The input tar file seems to be empty') 
             return False
+        return runThermo_hdd(inputTar, outputTar, pathway_id)
+        ''' Seems like subprocessing + Equilibrator do not play well together -- needs further testing
         if num_workers==1 or num_models==1:
             return runThermo_hdd(inputTar, outputTar, pathway_id)
         else:
             #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
             return runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
+        '''
