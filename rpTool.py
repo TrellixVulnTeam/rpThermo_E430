@@ -79,7 +79,15 @@ class rpThermo:
                 else:
                     self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
                     if write_results:
-                        self.logger.warning('Setting everything to 0')
+                        self.logger.warning('Adding 0 values everything to 0')
+                        pathway_standard_dg_prime.append(0.0)
+                        pathway_standard_dg_prime_error.append(0.0)
+                        pathway_physiological_dg_prime.append(0.0)
+                        pathway_physiological_dg_prime_error.append(0.0)
+                        #TODO: need to implement
+                        pathway_balanced.append(None)
+                        pathway_reversibility_index.append(None)
+                        pathway_reversibility_index_error.append(None)
                     return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
         if write_results:

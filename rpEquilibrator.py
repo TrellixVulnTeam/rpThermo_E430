@@ -3,6 +3,7 @@ from equilibrator_assets.generate_compound import create_compound, get_or_create
 import equilibrator_cache
 from equilibrator_pathway import Pathway
 import logging
+import numpy as np
 import json
 import tempfile
 import os
@@ -154,7 +155,7 @@ class rpEquilibrator:
         brs_annot = self.rpsbml.readBRSYNTHAnnotation(libsbml_species.getAnnotation())
         #TODO: handle the condition where there are no inchi values but there are SMILES -- should rarely, if ever happen
         self.logger.debug('libsbml_species: '+str(libsbml_species))
-        self.logger.debug('brs_annot: '+str(brs_annot))
+        #self.logger.debug('brs_annot: '+str(brs_annot))
         #Try to get the cmp from the ID
         spe_id = self._makeSpeciesStr(libsbml_species)
         spe_cmp = None
@@ -173,6 +174,8 @@ class rpEquilibrator:
                 except KeyError:
                     self.logger.warning('The following species does not have brsynth annotation InChI or SMILES: '+str(libsbml_species.getId()))
                     return None, None
+        if spe_cmp.id==4: #this is H+ and can be ignored
+            return 'h', 'h'
         self.logger.debug('spe_cmp: '+str(spe_cmp))
         #mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(eq_cmp[0])
         mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(spe_cmp)
@@ -196,10 +199,11 @@ class rpEquilibrator:
             self.logger.debug('------------------- '+str(rea.getSpecies())+' --------------')
             mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(rea.getSpecies()))
             self.logger.debug('mu: '+str(mu))
-
             if not mu:
                 self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
                 return False
+            elif mu=='h': #skipping the Hydrogen
+                continue
             ''' Cannot test np.array
             if not sigma:
                 self.logger.warning('Failed to calculate the reaction sigma thermodynamics using compound query')
@@ -210,9 +214,16 @@ class rpEquilibrator:
             S.append([-rea.getStoichiometry()])
         for pro in libsbml_reaction.getListOfProducts():
             mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(pro.getSpecies()))
-            if mu==None or sigma==None:
-                self.logger.warning('Failed to calculate the reaction thermodynamics using compound query')
+            if not mu:
+                self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
                 return False
+            elif mu=='h': #skipping the Hydrogen
+                continue
+            ''' Cannot test np.array
+            if not sigma:
+                self.logger.warning('Failed to calculate the reaction sigma thermodynamics using compound query')
+                return False
+            '''
             mus.append(mu)
             sigma_vecs.append(sigma)
             S.append([pro.getStoichiometry()])
@@ -220,6 +231,7 @@ class rpEquilibrator:
         sigma_vecs = Q_(sigma_vecs, 'kJ/mol')
         np_S = np.array(S)
         dfG_prime_o = np_S.T@mus
+        dfG_prime_o = float(dfG_prime_o.m[0])
         ###### adjust fot physio parameters to calculate the dGm'
         #TODO: check with Elad
         ''' this is the legacy component contribution code
@@ -236,8 +248,10 @@ class rpEquilibrator:
                     pass_conc.append(i)
         self.logger.debug(pass_conc)
         '''
-        dfG_prime_m = dfG_prime_o+self.cc.RT*sum([sto*np.log(co) for sto, co in zip(S, [physio_param]*len(S))])
+        dfG_prime_m = float(dfG_prime_o)+float(self.cc.RT.m)*sum([float(sto[0])*float(np.log(co)) for sto, co in zip(S, [physio_param]*len(S))])
         uncertainty = np_S.T@sigma_vecs
+        uncertainty = uncertainty@uncertainty.T
+        uncertainty = uncertainty.m[0][0]
         if write_results:
             self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', dfG_prime_o, 'kj_per_mol')
             self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', dfG_prime_m, 'kj_per_mol')
