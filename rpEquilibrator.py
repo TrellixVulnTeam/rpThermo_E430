@@ -86,7 +86,7 @@ class rpEquilibrator:
                     try:
                         #take the lowest value
                         int_list = [int(i.replace('MNXM', '')) for i in miriam_dict['metanetx']]
-                        iden_str = 'metanetx.chemical:'+str(miriam_dict['metanetx'][int_list.index(min(int_list))])
+                        return 'metanetx.chemical:'+str(miriam_dict['metanetx'][int_list.index(min(int_list))])
                     except ValueError:
                         self.logger.warning('There is a non int value in: '+str(miriam_dict['metanetx']))
             elif 'inchikey' in miriam_dict:
