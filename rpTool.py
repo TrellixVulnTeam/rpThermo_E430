@@ -1,5 +1,4 @@
 import rpEquilibrator
-#import rpComponentContribution #requires openbabel==2.4.1 while the equilibrator package uses the latest version
 import logging
 import numpy as np
 import json
@@ -17,9 +16,6 @@ class rpThermo:
         self.pMg = pMg
         self.temp_k = temp_k
         self.rpequilibrator = rpEquilibrator.rpEquilibrator(self.rpsbml, self.ph, self.ionic_strength, self.pMg, self.temp_k)
-        #self.rpcomponentcontribution = rpComponentContribution.rpComponentContribution(self.rpsbml, self.ph, self.pMg, self.ionic_strength/100.0, self.temp_k)
-        #self.rpcomponentcontribution.kegg_dG = kegg_dG 
-        #self.rpcomponentcontribution.cc_preprocess = cc_preprocess
 
     ## Small contructor function that passes the rpsbml object to the other classes
     #
@@ -27,7 +23,6 @@ class rpThermo:
     def rpSBMLPass(self, rpsbml):
         self.rpsbml = rpsbml
         self.rpequilibrator.rpsbml = rpsbml
-        #self.rpcomponentcontribution.rpsbml = rpsbml
 
 
     def pathway(self, pathway_id='rp_pathway', write_results=True):
@@ -78,24 +73,6 @@ class rpThermo:
                     pathway_reversibility_index.append(None)
                     pathway_reversibility_index_error.append(None)
                 else:
-                    """ dependency issue, requires openbabel==2.4.1
-                    self.logger.info('Equilibrator_api component contribution query failed')
-                    self.logger.info('Reverting to legacy component contribution')
-                    standard_dg_prime, physiological_dg_prime, dg_prime_uncert = self.rpcomponentcontribution.reaction(react, write_results)
-                    res = self.rpcomponentcontribution.reaction(react, write_results)
-                    if res:
-                        pathway_standard_dg_prime.append(res[0])
-                        pathway_standard_dg_prime_error.append(res[2])
-                        pathway_physiological_dg_prime.append(res[1])
-                        pathway_physiological_dg_prime_error.append(res[2])
-                        #TODO: need to implement
-                        pathway_balanced.append(None)
-                        pathway_reversibility_index.append(None)
-                        pathway_reversibility_index_error.append(None)
-                    else:
-                        self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
-                        return False
-                    """
                     self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
                     return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)

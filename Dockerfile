@@ -28,7 +28,7 @@ RUN pip install equilibrator-pathway==0.3.1
 COPY license.cxl /home/
 ENV CHEMAXON_LICENSE_URL /home/license.cxl
 
-COPY component_contribution_legacy /home/component_contribution_legacy/
+#COPY component_contribution_legacy /home/component_contribution_legacy/
 COPY rpTool.py /home/
 COPY rpToolServe.py /home/
 COPY galaxy/code/tool_rpThermo.py /home/
@@ -40,8 +40,8 @@ RUN mkdir /home/data/
 COPY data/mnx_default_conc.json /home/data/
 
 #COPY component_contribution_data.tar.xz /home/component_contribution/
-RUN tar xf /home/component_contribution_legacy/component_contribution_data.tar.xz -C /home/component_contribution_legacy/
-RUN rm /home/component_contribution_legacy/component_contribution_data.tar.xz
+#RUN tar xf /home/component_contribution_legacy/component_contribution_data.tar.xz -C /home/component_contribution_legacy/
+#RUN rm /home/component_contribution_legacy/component_contribution_data.tar.xz
 
 #run to downloads the required chuncks
 RUN python rpEquilibrator.py

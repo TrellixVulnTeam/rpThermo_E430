@@ -27,7 +27,7 @@ def main(inputfile,
          pMg=10.0,
          temp_k=298.15):
     docker_client = docker.from_env()
-    image_str = 'brsynth/rpthermo-standalone:v2'
+    image_str = 'brsynth/rpthermo-standalone:equilibrator'
     try:
         image = docker_client.images.get(image_str)
     except docker.errors.ImageNotFound:
