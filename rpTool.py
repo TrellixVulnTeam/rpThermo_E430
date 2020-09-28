@@ -45,8 +45,9 @@ class rpThermo:
         pathway_physiological_dg_prime = []
         pathway_physiological_dg_prime_error = []
         for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+            self.logger.debug('Sending the following reaction to reactionStrQuery: '+str(react))
             res = self.rpequilibrator.reactionStrQuery(react, write_results)
-            self.logger.info('Trying equilibrator_api string query')
+            self.logger.debug('The result is :'+str(res))
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
                 pathway_balanced.append(res[0])
@@ -74,6 +75,8 @@ class rpThermo:
                     pathway_reversibility_index_error.append(None)
                 else:
                     self.logger.error('Cannot calculate the thermodynmics for the reaction: '+str(react))
+                    if write_results:
+                        self.logger.warning('Setting everything to 0')
                     return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
         if write_results:

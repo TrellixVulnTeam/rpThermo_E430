@@ -52,7 +52,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single.rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.main(inputTar, outputTar, int(params.num_workers), params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+            rpToolServe.main(inputTar, outputTar, 1, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.rpsbml.xml')

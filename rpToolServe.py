@@ -20,6 +20,14 @@ import rpTool
 import rpSBML
 import rpCache
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    #level=logging.WARNING,
+    #level=logging.ERROR,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S',
+)
+
 
 ###################### Multi ###############
 
@@ -44,6 +52,7 @@ def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess
     #rpthermo = rpThermo.rpThermo()
     rpthermo = rpTool.rpThermo(kegg_dG=kegg_dG, cc_preprocess=cc_preprocess, ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     for sbml_path in sbml_paths:
+        logging.debug('Calculating the thermodynamics of the pathway '+str(pathway_id)+' for the file: '+str(sbml_path))
         file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
         rpsbml = rpSBML.rpSBML(file_name, path=sbml_path)
         #rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
@@ -225,7 +234,7 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-                    fileName = str(sbml_path.split('/')[-1]
+                    fileName = str(sbml_path.split('/')[-1])
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
@@ -242,6 +251,7 @@ def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, i
         tar.extractall(path=tmpCountFolder)
         num_models = len(glob.glob(tmpCountFolder+'/*'))
         tar.close()
+        #TODO: count the number of models in the tar and if <num_workers then choose that
         if num_workers<=0:
             logging.error('Cannot have less or 0 workers')
             return False

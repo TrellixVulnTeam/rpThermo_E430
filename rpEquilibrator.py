@@ -49,6 +49,7 @@ class rpEquilibrator:
         ret_type -> valid options (xref, id, name)
         TODO: metanetx.chemical:MNXM7 + bigg.metabolite:pi
         """
+        self.logger.debug('ret_type: '+str(ret_type))
         if ret_type=='name':
             return libsbml_species.getName()
         elif ret_type=='id':
@@ -59,6 +60,7 @@ class rpEquilibrator:
                 self.logger.error('Cannot retreive the annotation')
                 return False
             miriam_dict = self.rpsbml.readMIRIAMAnnotation(annot)
+            self.logger.debug('miriam_dict: '+str(miriam_dict))
             if not miriam_dict:
                 self.logger.error('The object annotation does not have any MIRIAM entries')
                 return False
@@ -97,7 +99,7 @@ class rpEquilibrator:
             else:
                 self.logger.warning('Could not extract string input for '+str(miriam_dict))
                 return False
-            self.logger.warning('Got to the end without return... should not happen')
+            self.logger.warning('The MIRIAM annotation does not have the required information')
             return False
         else:
             self.logger.warning('Cannot determine ret_type: '+str(ret_type))
@@ -145,6 +147,10 @@ class rpEquilibrator:
     #
     # @return Tuple of size two whith mu and sigma values in that order
     def speciesCmpQuery(self, libsbml_species):
+        annot = libsbml_species.getAnnotation()
+        if not annot:
+            self.logger.warning('The annotation of '+str(libsbml_species)+' is None....')
+            return None, None
         brs_annot = self.rpsbml.readBRSYNTHAnnotation(libsbml_species.getAnnotation())
         #TODO: handle the condition where there are no inchi values but there are SMILES -- should rarely, if ever happen
         try:
@@ -238,6 +244,18 @@ class rpEquilibrator:
         reac_str = ''
         try:
             reac_str = self._makeReactionStr(libsbml_reaction)
+            self.logger.debug('The reaction string is: '+str(reac_str))
+            if not reac_str:
+                self.logger.error('Could not generate the reaction string for: '+str(libsbml_reaction))
+                if write_results:
+                    self.logger.warning('Writing the 0 results to the file')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', 0.0, 'kj_per_mol')
+                    #Are there default values for these?
+                    #self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', 0.0)
+                    #self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'balanced', rxn.is_balanced())
+                return False
             rxn = self.cc.parse_reaction_formula(reac_str)
             standard_dg = self.cc.standard_dg(rxn)
             standard_dg_prime = self.cc.standard_dg_prime(rxn)
