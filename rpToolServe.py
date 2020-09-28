@@ -20,14 +20,6 @@ import rpTool
 import rpSBML
 import rpCache
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    #level=logging.WARNING,
-    #level=logging.ERROR,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
 
 ###################### Multi ###############
 
@@ -159,6 +151,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
                 logging.error('Input file is empty')
                 return False
             for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                logging.debug('Passing the sbml file: '+str(sbml_path))
                 fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
                 rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
                 #rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)

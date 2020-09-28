@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import json
 
+
 class rpThermo:
     """
     TODO: drop the formation energy of chemical species in the SBML file
@@ -21,6 +22,7 @@ class rpThermo:
     #
     #
     def rpSBMLPass(self, rpsbml):
+        self.logger.debug('Passing rpsbml: '+str(rpsbml))
         self.rpsbml = rpsbml
         self.rpequilibrator.rpsbml = rpsbml
 
@@ -63,6 +65,7 @@ class rpThermo:
             else:
                 self.logger.info('Native equilibrator string query failed')
                 self.logger.info('Trying equilibrator_api component contribution')
+                self.logger.debug('Trying to calculate using CC: '+str(react))
                 res = self.rpequilibrator.reactionCmpQuery(react, write_results)
                 if res:
                     pathway_standard_dg_prime.append(res[0])

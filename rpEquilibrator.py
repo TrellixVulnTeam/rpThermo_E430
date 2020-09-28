@@ -153,13 +153,30 @@ class rpEquilibrator:
             return None, None
         brs_annot = self.rpsbml.readBRSYNTHAnnotation(libsbml_species.getAnnotation())
         #TODO: handle the condition where there are no inchi values but there are SMILES -- should rarely, if ever happen
-        try:
-            eq_cmp = get_or_create_compound([brs_annot['inchi']], mol_format='inchi')
-            mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(eq_cmp[0])
-            return mu, sigma
-        except KeyError:
-            self.logger.warning('The following species does not have brsynth annotation inchi: '+str(libsbml_species.getId()))
-            return None, None
+        self.logger.debug('libsbml_species: '+str(libsbml_species))
+        self.logger.debug('brs_annot: '+str(brs_annot))
+        #Try to get the cmp from the ID
+        spe_id = self._makeSpeciesStr(libsbml_species)
+        spe_cmp = None
+        if spe_id:
+            self.logger.debug('Trying to find the CMP using the xref string: '+str(spe_id))
+            spe_cmp = self.cc.ccache.get_compound(self._makeSpeciesStr(libsbml_species))
+        if spe_cmp:
+            self.logger.debug('Compound has been found using the xref')
+        else:
+            self.logger.debug('Trying to find the CMP using the structure')
+            try:
+                spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['inchi'], mol_format='inchi')
+            except (OSError, KeyError) as e:
+                try:
+                    spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['smiles'], mol_format='smiles')
+                except KeyError:
+                    self.logger.warning('The following species does not have brsynth annotation InChI or SMILES: '+str(libsbml_species.getId()))
+                    return None, None
+        self.logger.debug('spe_cmp: '+str(spe_cmp))
+        #mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(eq_cmp[0])
+        mu, sigma = self.cc.predictor.preprocess.get_compound_prediction(spe_cmp)
+        return mu, sigma
 
 
     ## If the string equilibrator query fails then fallback into the native equilibrator-api component contribution method
@@ -176,19 +193,27 @@ class rpEquilibrator:
         dfG_prime_m = None
         uncertainty = None
         for rea in libsbml_reaction.getListOfReactants():
-            mu, sigma = self.speciesCmpQuery(rea)
-            if mu==None or sigma==None:
-                self.logger.warning('Failed to calculate the reaction thermodynamics using compound query')
+            self.logger.debug('------------------- '+str(rea.getSpecies())+' --------------')
+            mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(rea.getSpecies()))
+            self.logger.debug('mu: '+str(mu))
+
+            if not mu:
+                self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
                 return False
-            mus.appen(mu)
+            ''' Cannot test np.array
+            if not sigma:
+                self.logger.warning('Failed to calculate the reaction sigma thermodynamics using compound query')
+                return False
+            '''
+            mus.append(mu)
             sigma_vecs.append(sigma)
-            S.apppend([-rea.getStoichiometry()])
+            S.append([-rea.getStoichiometry()])
         for pro in libsbml_reaction.getListOfProducts():
-            mu, sigma = self.speciesCmpQuery(pro)
+            mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(pro.getSpecies()))
             if mu==None or sigma==None:
                 self.logger.warning('Failed to calculate the reaction thermodynamics using compound query')
                 return False
-            mus.appen(mu)
+            mus.append(mu)
             sigma_vecs.append(sigma)
             S.append([pro.getStoichiometry()])
         mus = Q_(mus, 'kJ/mol')
