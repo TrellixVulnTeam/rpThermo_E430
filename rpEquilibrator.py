@@ -25,7 +25,7 @@ class rpEquilibrator:
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.mnx_default_conc = json.load(open('data/mnx_default_conc.json', 'r'))
+        self.mnx_default_conc = json.load(open('/home/data/mnx_default_conc.json', 'r'))
         self.rpsbml = rpsbml
     
 
@@ -235,8 +235,10 @@ class rpEquilibrator:
         Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
         """
         #TODO: when an inchikey is passed, (and you don't have any other xref) and equilibrator finds the correct species then update the MIRIAM annotations
+        reac_str = ''
         try:
-            rxn = self.cc.parse_reaction_formula(self._makeReactionStr(libsbml_reaction))
+            reac_str = self._makeReactionStr(libsbml_reaction)
+            rxn = self.cc.parse_reaction_formula(reac_str)
             standard_dg = self.cc.standard_dg(rxn)
             standard_dg_prime = self.cc.standard_dg_prime(rxn)
             physiological_dg_prime = self.cc.physiological_dg_prime(rxn)

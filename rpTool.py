@@ -1,7 +1,8 @@
 import rpEquilibrator
-#import rpComponentContribution #required openbabel==2.4.1
+#import rpComponentContribution #requires openbabel==2.4.1 while the equilibrator package uses the latest version
 import logging
 import numpy as np
+import json
 
 class rpThermo:
     """
