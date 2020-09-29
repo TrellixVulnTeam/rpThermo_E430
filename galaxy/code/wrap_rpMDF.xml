@@ -1,7 +1,7 @@
 <tool id="rpMDF" name="Min-Max Driving Force" version="0.1">
   <description>Min-Max Driving Force </description>
   <requirements>
-		<container type="docker">brsynth/rpthermo-standalone:v2</container>
+		<container type="docker">brsynth/rpthermo-standalone:equilibrator</container>
   </requirements>
   <stdio>
 		<regex match="WARNING:" level="warning" />
@@ -25,7 +25,9 @@
     </conditional>
     <section name="adv" title="Advanced Options" expanded="false">
       <param name="pathway_id" type="text" value="rp_pathway" label="SBML heterologous pathway ID" />
-      <param name="ph" type="float" value="7.2" label="Compartment PH of the pathway" />
+      <param name="fba_id" type="text" value="fba_obj_fraction" label="FBA objective id value to use to calculate MDF" />
+      <param name="thermo_id" type="text" value="dfG_prime_o" label="Thermodynamic value to use to calculate MDF" />
+      <param name="ph" type="float" value="7.5" label="Compartment PH of the pathway" />
       <param name="ionic_strength" type="float" value="200.0" label="Compartment ionic strength of the pathway" />
       <param name="pMg" type="float" value="10.0" label="Compartment pMg of the pathway" />
       <param name="temp_k" type="float" value="298.15" label="Compartment temperature in Kelvin" />

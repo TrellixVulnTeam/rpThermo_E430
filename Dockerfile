@@ -23,25 +23,18 @@ RUN pip install equilibrator-pathway==0.3.1
 #RUN git clone --single-branch --branch develop https://gitlab.com/equilibrator/equilibrator-pathway.git
 #RUN cd equilibrator-pathway && pip install -e . && cd ..
 
+COPY init_equilibrator.py /home/
+#run to downloads the required chuncks
+RUN python init_equilibrator.py
 
 #WARNING: make sure that you download the Marvin licence and paste it at the root of the Dockerfile
 COPY license.cxl /home/
 ENV CHEMAXON_LICENSE_URL /home/license.cxl
 
-#COPY component_contribution_legacy /home/component_contribution_legacy/
-COPY rpTool.py /home/
 COPY rpToolServe.py /home/
 COPY galaxy/code/tool_rpThermo.py /home/
 COPY galaxy/code/tool_rpMDF.py /home/
-#COPY rpComponentContribution.py /home/ #if using legacy component contribution
 COPY rpEquilibrator.py /home/
 
 RUN mkdir /home/data/
 COPY data/mnx_default_conc.json /home/data/
-
-#COPY component_contribution_data.tar.xz /home/component_contribution/
-#RUN tar xf /home/component_contribution_legacy/component_contribution_data.tar.xz -C /home/component_contribution_legacy/
-#RUN rm /home/component_contribution_legacy/component_contribution_data.tar.xz
-
-#run to downloads the required chuncks
-RUN python rpEquilibrator.py

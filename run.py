@@ -20,7 +20,6 @@ import docker
 def main(inputfile, 
          input_format,
          output,
-         num_workers=10,
          pathway_id='rp_pathway',
          ph=7.0,
          ionic_strength=200.0,
@@ -47,8 +46,6 @@ def main(inputfile,
                    str(input_format),
                    '-pathway_id',
                    str(pathway_id),
-                   '-num_workers',
-                   str(num_workers),
                    '-ph',
                    str(ph),
                    '-ionic_strength',
@@ -85,10 +82,9 @@ if __name__ == "__main__":
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
-    parser.add_argument('-num_workers', type=int, default=10)
     parser.add_argument('-ph', type=float, default=7.0)
     parser.add_argument('-ionic_strength', type=float, default=200.0)
     parser.add_argument('-pMg', type=float, default=10.0)
     parser.add_argument('-temp_k', type=float, default=298.15)
     params = parser.parse_args()
-    main(params.input, params.input_format, params.output, params.num_workers, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+    main(params.input, params.input_format, params.output, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)

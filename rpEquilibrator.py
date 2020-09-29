@@ -13,7 +13,7 @@ class rpEquilibrator:
     """
     Collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
     """
-    def __init__(self, rpsbml=None, ph=7.2, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    def __init__(self, rpsbml=None, ph=7.5, ionic_strength=200, pMg=10.0, temp_k=298.15):
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpEquilibrator')
         self.cc = ComponentContribution()
@@ -21,7 +21,6 @@ class rpEquilibrator:
         self.cc.ionic_strength = Q_(str(ionic_strength)+' mM')
         self.cc.p_mg = Q_(pMg)
         self.cc.temperature = Q_(str(temp_k)+' K')
-        self.stdev_factor = stdev_factor
         self.ph = ph
         self.ionic_strength = ionic_strength
         self.pMg = pMg
@@ -324,7 +323,7 @@ class rpEquilibrator:
         pathway_physiological_dg_prime_error = []
         for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
             self.logger.debug('Sending the following reaction to _reactionStrQuery: '+str(react))
-            res = self.rpequilibrator._reactionStrQuery(react, write_results)
+            res = self._reactionStrQuery(react, write_results)
             self.logger.debug('The result is :'+str(res))
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
@@ -342,7 +341,7 @@ class rpEquilibrator:
                 self.logger.info('Native equilibrator string query failed')
                 self.logger.info('Trying equilibrator_api component contribution')
                 self.logger.debug('Trying to calculate using CC: '+str(react))
-                res = self.rpequilibrator._reactionCmpQuery(react, write_results)
+                res = self._reactionCmpQuery(react, write_results)
                 if res:
                     pathway_standard_dg_prime.append(res[0])
                     pathway_standard_dg_prime_error.append(res[2])
@@ -402,7 +401,7 @@ class rpEquilibrator:
             fo.write("p_h\t"+str(self.ph)+"\t\t\n")
             fo.write("ionic_strength\t"+str(self.ionic_strength)+" mM\t\t\n")
             fo.write("p_mg\t"+str(self.pMg)+"\t\t\n")
-            fo.write("stdev_factor    "+str(self.stdev_factor)+"\n")
+            fo.write("stdev_factor    "+str(stdev_factor)+"\n")
             fo.write("\t\t\t\n")
             ####################### Make the reaction list ######################
             fo.write("!!SBtab TableID='Reaction' TableType='Reaction'\t\t\t\n")
@@ -533,7 +532,7 @@ class rpEquilibrator:
         return True
 
 
-    def MDF(self, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', write_results=True):
+    def MDF(self, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', stdev_factor=1.96, write_results=True):
         """
         Perform MDF analysis on the retropath pathways
         """
@@ -542,7 +541,7 @@ class rpEquilibrator:
         rp_pathway = groups.getGroup(pathway_id)
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             path_sbtab = os.path.join(tmpOutputFolder, 'tmp_sbtab.tsv')
-            sbtab_status = self.toNetworkSBtab(path_sbtab, pathway_id)
+            sbtab_status = self.toNetworkSBtab(path_sbtab, pathway_id, thermo_id, fba_id, stdev_factor)
             if not sbtab_status:
                 self.logger.error('There was a problem generating the SBtab... aborting')
                 return 0.0
@@ -565,11 +564,6 @@ class rpEquilibrator:
                 self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
         return to_ret_mdf
 
-
-#used to initialise and download the data for equilibrator
-if __name__ == "__main__":
-    from equilibrator_api import ComponentContribution, Q_
-    cc = ComponentContribution()
 
 
 #######################

@@ -36,13 +36,13 @@ if __name__ == "__main__":
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
-    parser.add_argument('-ph', type=float, default=7.0)
+    parser.add_argument('-ph', type=float, default=7.5)
     parser.add_argument('-ionic_strength', type=float, default=200.0)
     parser.add_argument('-pMg', type=float, default=10.0)
     parser.add_argument('-temp_k', type=float, default=298.15)
     params = parser.parse_args()
     if params.input_format=='tar':
-        rpToolServe.main(params.input, params.output, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+        rpToolServe.runThermo_hdd(params.input, params.output, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
     elif params.input_format=='sbml':
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
@@ -51,7 +51,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single_rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.main(inputTar, outputTar, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+            rpToolServe.runThermo_hdd(inputTar, outputTar, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.xml')
