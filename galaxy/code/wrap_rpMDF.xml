@@ -25,7 +25,7 @@
     </conditional>
     <section name="adv" title="Advanced Options" expanded="false">
       <param name="pathway_id" type="text" value="rp_pathway" label="SBML heterologous pathway ID" />
-      <param name="ph" type="float" value="7.0" label="Compartment PH of the pathway" />
+      <param name="ph" type="float" value="7.2" label="Compartment PH of the pathway" />
       <param name="ionic_strength" type="float" value="200.0" label="Compartment ionic strength of the pathway" />
       <param name="pMg" type="float" value="10.0" label="Compartment pMg of the pathway" />
       <param name="temp_k" type="float" value="298.15" label="Compartment temperature in Kelvin" />

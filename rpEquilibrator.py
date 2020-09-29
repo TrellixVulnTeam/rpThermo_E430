@@ -13,7 +13,7 @@ class rpEquilibrator:
     """
     Collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
     """
-    def __init__(self, rpsbml=None, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    def __init__(self, rpsbml=None, ph=7.2, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpEquilibrator')
         self.cc = ComponentContribution()
@@ -136,18 +136,13 @@ class rpEquilibrator:
         return reac_str
 
 
-    ################################################################################
-    ########################### PUBLIC FUNCTIONS ###################################
-    ################################################################################
-
-
     ################### Equilibrator component contribution queries instead of using the native functions ###########
 
 
     ## Use the native equilibrator-api compound contribution method
     #
     # @return Tuple of size two whith mu and sigma values in that order
-    def speciesCmpQuery(self, libsbml_species):
+    def _speciesCmpQuery(self, libsbml_species):
         annot = libsbml_species.getAnnotation()
         if not annot:
             self.logger.warning('The annotation of '+str(libsbml_species)+' is None....')
@@ -188,7 +183,7 @@ class rpEquilibrator:
     # TODO: add the concentration input as a list -- perhaps even store it within the SBML model
     #
     #
-    def reactionCmpQuery(self, libsbml_reaction, write_results=False, physio_param=1e-3):
+    def _reactionCmpQuery(self, libsbml_reaction, write_results=False, physio_param=1e-3):
         mus = []
         sigma_vecs = []
         S = []
@@ -197,33 +192,23 @@ class rpEquilibrator:
         uncertainty = None
         for rea in libsbml_reaction.getListOfReactants():
             self.logger.debug('------------------- '+str(rea.getSpecies())+' --------------')
-            mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(rea.getSpecies()))
+            mu, sigma = self._speciesCmpQuery(self.rpsbml.model.getSpecies(rea.getSpecies()))
             self.logger.debug('mu: '+str(mu))
             if not mu:
                 self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
                 return False
             elif mu=='h': #skipping the Hydrogen
                 continue
-            ''' Cannot test np.array
-            if not sigma:
-                self.logger.warning('Failed to calculate the reaction sigma thermodynamics using compound query')
-                return False
-            '''
             mus.append(mu)
             sigma_vecs.append(sigma)
             S.append([-rea.getStoichiometry()])
         for pro in libsbml_reaction.getListOfProducts():
-            mu, sigma = self.speciesCmpQuery(self.rpsbml.model.getSpecies(pro.getSpecies()))
+            mu, sigma = self._speciesCmpQuery(self.rpsbml.model.getSpecies(pro.getSpecies()))
             if not mu:
                 self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
                 return False
             elif mu=='h': #skipping the Hydrogen
                 continue
-            ''' Cannot test np.array
-            if not sigma:
-                self.logger.warning('Failed to calculate the reaction sigma thermodynamics using compound query')
-                return False
-            '''
             mus.append(mu)
             sigma_vecs.append(sigma)
             S.append([pro.getStoichiometry()])
@@ -234,20 +219,6 @@ class rpEquilibrator:
         dfG_prime_o = float(dfG_prime_o.m[0])
         ###### adjust fot physio parameters to calculate the dGm'
         #TODO: check with Elad
-        ''' this is the legacy component contribution code
-        pass_conc = []
-        if conc==None:
-            pass_conc = []
-            for i in range(len(stochio)):
-                pass_conc.append(physioParam)
-        else:
-            for i in conc:
-                if i==None:
-                    pass_conc.append(physioParam)
-                else:
-                    pass_conc.append(i)
-        self.logger.debug(pass_conc)
-        '''
         dfG_prime_m = float(dfG_prime_o)+float(self.cc.RT.m)*sum([float(sto[0])*float(np.log(co)) for sto, co in zip(S, [physio_param]*len(S))])
         uncertainty = np_S.T@sigma_vecs
         uncertainty = uncertainty@uncertainty.T
@@ -259,6 +230,7 @@ class rpEquilibrator:
         return dfG_prime_o, dfG_prime_m, uncertainty
 
     
+    '''
     ## Not sure if we should implement such a function -- recommended by Elad I geuss
     #
     #
@@ -273,9 +245,9 @@ class rpEquilibrator:
         Return the formation energy of a chemical species
         """
         return False
+    '''
 
-
-    def reactionStrQuery(self, libsbml_reaction, write_results=False):
+    def _reactionStrQuery(self, libsbml_reaction, write_results=False):
         """
         Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
         """
@@ -285,7 +257,7 @@ class rpEquilibrator:
             reac_str = self._makeReactionStr(libsbml_reaction)
             self.logger.debug('The reaction string is: '+str(reac_str))
             if not reac_str:
-                self.logger.error('Could not generate the reaction string for: '+str(libsbml_reaction))
+                self.logger.warning('Could not generate the reaction string for: '+str(libsbml_reaction))
                 if write_results:
                     self.logger.warning('Writing the 0 results to the file')
                     self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', 0.0, 'kj_per_mol')
@@ -326,6 +298,84 @@ class rpEquilibrator:
             self.logger.warning('Some of the species have not been pre-caclulated using ChemAxon')
 
 
+    ################################################################################
+    ########################### PUBLIC FUNCTIONS ###################################
+    ################################################################################
+
+
+    def pathway(self, pathway_id='rp_pathway', write_results=True):
+        """
+        WARNING: taking the sum of the reaction thermodynamics is perhaps not the best way to do it
+        Using the equilibrator-api as well as the legacy component contribution method to calculate the mean thermodynamics of the rp_pathway
+        """
+        groups = self.rpsbml.model.getPlugin('groups')
+        rp_pathway = groups.getGroup(pathway_id)
+        if not rp_pathway:
+            self.logger.error('Cannot retreive the pathway: '+str(pathway_id))
+            return False
+        pathway_balanced = []
+        pathway_reversibility_index = []
+        pathway_reversibility_index_error = []
+        pathway_standard_dg = []
+        pathway_standard_dg_error = []
+        pathway_standard_dg_prime = []
+        pathway_standard_dg_prime_error = []
+        pathway_physiological_dg_prime = []
+        pathway_physiological_dg_prime_error = []
+        for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
+            self.logger.debug('Sending the following reaction to _reactionStrQuery: '+str(react))
+            res = self.rpequilibrator._reactionStrQuery(react, write_results)
+            self.logger.debug('The result is :'+str(res))
+            if res:
+                #WARNING: the uncertainty for the three thermo calculations should be the same
+                pathway_balanced.append(res[0])
+                pathway_reversibility_index.append(res[1][0])
+                pathway_reversibility_index_error.append(res[1][1])
+                #ignoring --  need to see if legacy component contribution can return these values
+                #pathway_standard_dg.append(res[2][0])
+                #pathway_standard_dg_error.append(res[2][1])
+                pathway_standard_dg_prime.append(res[3][0])
+                pathway_standard_dg_prime_error.append(res[3][1])
+                pathway_physiological_dg_prime.append(res[4][0])
+                pathway_physiological_dg_prime_error.append(res[4][1])
+            else:
+                self.logger.info('Native equilibrator string query failed')
+                self.logger.info('Trying equilibrator_api component contribution')
+                self.logger.debug('Trying to calculate using CC: '+str(react))
+                res = self.rpequilibrator._reactionCmpQuery(react, write_results)
+                if res:
+                    pathway_standard_dg_prime.append(res[0])
+                    pathway_standard_dg_prime_error.append(res[2])
+                    pathway_physiological_dg_prime.append(res[1])
+                    pathway_physiological_dg_prime_error.append(res[2])
+                    #TODO: need to implement
+                    pathway_balanced.append(None)
+                    pathway_reversibility_index.append(None)
+                    pathway_reversibility_index_error.append(None)
+                else:
+                    self.logger.warning('Cannot calculate the thermodynmics for the reaction: '+str(react))
+                    if write_results:
+                        self.logger.warning('Adding 0 values everything to 0')
+                        pathway_standard_dg_prime.append(0.0)
+                        pathway_standard_dg_prime_error.append(0.0)
+                        pathway_physiological_dg_prime.append(0.0)
+                        pathway_physiological_dg_prime_error.append(0.0)
+                        #TODO: need to implement
+                        pathway_balanced.append(None)
+                        pathway_reversibility_index.append(None)
+                        pathway_reversibility_index_error.append(None)
+                    return False
+        #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
+        if write_results:
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', np.sum(pathway_standard_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o_std', np.std(pathway_standard_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m', np.sum(pathway_physiological_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_m_std', np.std(pathway_physiological_dg_prime), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert', np.mean(pathway_standard_dg_prime_error), 'kj_per_mol')
+            self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_uncert_std', np.std(pathway_standard_dg_prime_error), 'kj_per_mol')
+        return (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime)), (np.sum(pathway_physiological_dg_prime), np.std(pathway_physiological_dg_prime)), (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime))
+
+
 
     ## Create a network SBtab file used to calculate the pathway MDF
     #
@@ -334,7 +384,7 @@ class rpEquilibrator:
     # @param thermo_id String of the thermodynamic id to use. If None, then its not added. If not added, then these values are not added and we rely on Equilibrator to find these values
     # @param fba_id String of the FBA id to output to the file. If None, then default values of 1.0 for all reactions is added
     # @return Boolean determining the status
-    def toNetworkSBtab(self, output, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction'):
+    def toNetworkSBtab(self, output, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', stdev_factor=1.96):
         """
         Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF
         """

@@ -62,13 +62,13 @@ if __name__ == "__main__":
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
             outputTar = tmpOutputFolder+'/tmp_output.tar.xz'
             with tarfile.open(inputTar, mode='w:xz') as tf:
-                info = tarfile.TarInfo('single.rpsbml.xml') #need to change the name since galaxy creates .dat files
+                info = tarfile.TarInfo('single_rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
             rpToolServe.runMDF_hdd(inputTar, outputTar, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
-            out_file = glob.glob(tmpOutputFolder+'/*.rpsbml.xml')
+            out_file = glob.glob(tmpOutputFolder+'/*.xml')
             if len(out_file)>1:
                 logging.warning('There are more than one output file...')
             shutil.copy(out_file[0], params.output)
