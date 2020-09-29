@@ -31,10 +31,11 @@ RUN python init_equilibrator.py
 COPY license.cxl /home/
 ENV CHEMAXON_LICENSE_URL /home/license.cxl
 
+RUN mkdir /home/data/
+COPY data/mnx_default_conc.json /home/data/
+
 COPY rpToolServe.py /home/
 COPY galaxy/code/tool_rpThermo.py /home/
 COPY galaxy/code/tool_rpMDF.py /home/
 COPY rpEquilibrator.py /home/
 
-RUN mkdir /home/data/
-COPY data/mnx_default_conc.json /home/data/

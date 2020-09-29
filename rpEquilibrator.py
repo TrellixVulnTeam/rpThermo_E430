@@ -1,5 +1,6 @@
 from equilibrator_api import ComponentContribution, Q_
 from equilibrator_assets.generate_compound import create_compound, get_or_create_compound
+from equilibrator_assets.group_decompose import GroupDecompositionError
 import equilibrator_cache
 from equilibrator_pathway import Pathway
 import logging
@@ -12,6 +13,7 @@ import os
 class rpEquilibrator:
     """
     Collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
+    TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
     """
     def __init__(self, rpsbml=None, ph=7.5, ionic_strength=200, pMg=10.0, temp_k=298.15):
         self.logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class rpEquilibrator:
         self.temp_k = temp_k
         self.mnx_default_conc = json.load(open('/home/data/mnx_default_conc.json', 'r'))
         self.rpsbml = rpsbml
+        self.calc_cmp = {}
     
 
     ##################################################################################
@@ -156,18 +159,29 @@ class rpEquilibrator:
         if spe_id:
             self.logger.debug('Trying to find the CMP using the xref string: '+str(spe_id))
             spe_cmp = self.cc.ccache.get_compound(self._makeSpeciesStr(libsbml_species))
-        if spe_cmp:
-            self.logger.debug('Compound has been found using the xref')
-        else:
+        if not spe_cmp:
             self.logger.debug('Trying to find the CMP using the structure')
-            try:
-                spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['inchi'], mol_format='inchi')
-            except (OSError, KeyError) as e:
+            #try to find it in the local data - we do this because there are repeated species in many files
+            if brs_annot['inchi'] in self.calc_cmp:
+                spe_cmp = self.calc_cmp[brs_annot['inchi']]
+            elif brs_annot['smiles'] in self.calc_cmp:
+                spe_cmp = self.calc_cmp[brs_annot['smiles']]
+            else:
+                #if you cannot find it then calculate it
                 try:
-                    spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['smiles'], mol_format='smiles')
-                except KeyError:
-                    self.logger.warning('The following species does not have brsynth annotation InChI or SMILES: '+str(libsbml_species.getId()))
-                    return None, None
+                    spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['inchi'], mol_format='inchi')
+                    self.calc_cmp[brs_annot['inchi']] = spe_cmp
+                    self.calc_cmp[brs_annot['smiles']] = spe_cmp
+                except (OSError, KeyError, GroupDecompositionError) as e:
+                    try:
+                        spe_cmp = get_or_create_compound(self.cc.ccache, brs_annot['smiles'], mol_format='smiles')
+                        self.calc_cmp[brs_annot['smiles']] = spe_cmp
+                        self.calc_cmp[brs_annot['inchi']] = spe_cmp
+                    except (OSError, KeyError, GroupDecompositionError) as e:
+                        self.logger.warning('The following species does not have brsynth annotation InChI or SMILES: '+str(libsbml_species.getId()))
+                        self.logger.warning('Or Equilibrator could not convert the structures')
+                        self.logger.warning(e)
+                        return None, None
         if spe_cmp.id==4: #this is H+ and can be ignored
             return 'h', 'h'
         self.logger.debug('spe_cmp: '+str(spe_cmp))
@@ -195,6 +209,10 @@ class rpEquilibrator:
             self.logger.debug('mu: '+str(mu))
             if not mu:
                 self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
+                if write_results:
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', 0.0, 'kj_per_mol')
                 return False
             elif mu=='h': #skipping the Hydrogen
                 continue
@@ -205,6 +223,10 @@ class rpEquilibrator:
             mu, sigma = self._speciesCmpQuery(self.rpsbml.model.getSpecies(pro.getSpecies()))
             if not mu:
                 self.logger.warning('Failed to calculate the reaction mu thermodynamics using compound query')
+                if write_results:
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', 0.0, 'kj_per_mol')
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', 0.0, 'kj_per_mol')
                 return False
             elif mu=='h': #skipping the Hydrogen
                 continue
@@ -353,17 +375,16 @@ class rpEquilibrator:
                     pathway_reversibility_index_error.append(None)
                 else:
                     self.logger.warning('Cannot calculate the thermodynmics for the reaction: '+str(react))
-                    if write_results:
-                        self.logger.warning('Adding 0 values everything to 0')
-                        pathway_standard_dg_prime.append(0.0)
-                        pathway_standard_dg_prime_error.append(0.0)
-                        pathway_physiological_dg_prime.append(0.0)
-                        pathway_physiological_dg_prime_error.append(0.0)
-                        #TODO: need to implement
-                        pathway_balanced.append(None)
-                        pathway_reversibility_index.append(None)
-                        pathway_reversibility_index_error.append(None)
-                    return False
+                    self.logger.warning('Setting everything to 0')
+                    pathway_standard_dg_prime.append(0.0)
+                    pathway_standard_dg_prime_error.append(0.0)
+                    pathway_physiological_dg_prime.append(0.0)
+                    pathway_physiological_dg_prime_error.append(0.0)
+                    #TODO: need to implement
+                    pathway_balanced.append(None)
+                    pathway_reversibility_index.append(None)
+                    pathway_reversibility_index_error.append(None)
+                    #return False
         #WARNING return is ignoring balanced and reversibility index -- need to implement in legacy to return it (however still writing these results to the SBML)
         if write_results:
             self.rpsbml.addUpdateBRSynth(rp_pathway, 'dfG_prime_o', np.sum(pathway_standard_dg_prime), 'kj_per_mol')
