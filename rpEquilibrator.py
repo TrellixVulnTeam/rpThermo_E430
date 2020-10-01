@@ -293,8 +293,15 @@ class rpEquilibrator:
             standard_dg_prime = self.cc.standard_dg_prime(rxn)
             physiological_dg_prime = self.cc.physiological_dg_prime(rxn)
             ln_reversibility_index = self.cc.ln_reversibility_index(rxn)
+            if type(ln_reversibility_index)==float:
+                self.logger.warning('The reversibility index is infinite: '+str(ln_reversibility_index))
+                ln_reversibility_index = None
+                ln_reversibility_index_error = None
+            else:
+                ln_reversibility_index_error = ln_reversibility_index.error.m
+                ln_reversibility_index = ln_reversibility_index.value.m
             self.logger.debug(rxn.is_balanced())
-            self.logger.debug('ln_reversibility_index: '+str(ln_reversibility_index.value.m))
+            self.logger.debug('ln_reversibility_index: '+str(ln_reversibility_index))
             self.logger.debug('standard_dg.value.m: '+str(standard_dg.value.m))
             self.logger.debug('standard_dg.error.m: '+str(standard_dg.error.m))
             self.logger.debug('standard_dg_prime.value.m: '+str(standard_dg_prime.value.m))
@@ -305,10 +312,11 @@ class rpEquilibrator:
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_o', standard_dg_prime.value.m, 'kj_per_mol')
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_prime_m', physiological_dg_prime.value.m, 'kj_per_mol')
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'dfG_uncert', standard_dg.error.m, 'kj_per_mol')
-                self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', ln_reversibility_index.value.m)
+                if ln_reversibility_index:
+                    self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'reversibility_index', ln_reversibility_index)
                 self.rpsbml.addUpdateBRSynth(libsbml_reaction, 'balanced', rxn.is_balanced())
             return (rxn.is_balanced(),
-                   (float(ln_reversibility_index.value.m), float(ln_reversibility_index.error.m)),
+                   (ln_reversibility_index, ln_reversibility_index_error),
                    (float(standard_dg.value.m), float(standard_dg.error.m)),
                    (float(standard_dg_prime.value.m), float(standard_dg_prime.error.m)), 
                    (float(physiological_dg_prime.value.m), float(physiological_dg_prime.error.m)))
@@ -327,7 +335,6 @@ class rpEquilibrator:
     def pathway(self, pathway_id='rp_pathway', write_results=True):
         """
         WARNING: taking the sum of the reaction thermodynamics is perhaps not the best way to do it
-        Using the equilibrator-api as well as the legacy component contribution method to calculate the mean thermodynamics of the rp_pathway
         """
         groups = self.rpsbml.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -350,8 +357,14 @@ class rpEquilibrator:
             if res:
                 #WARNING: the uncertainty for the three thermo calculations should be the same
                 pathway_balanced.append(res[0])
-                pathway_reversibility_index.append(res[1][0])
-                pathway_reversibility_index_error.append(res[1][1])
+                if not res[1][0]==None:
+                    pathway_reversibility_index.append(res[1][0])
+                else:
+                    pathway_reversibility_index.append(0.0)
+                if not res[1][1]==None:
+                    pathway_reversibility_index_error.append(res[1][1])
+                else:
+                    pathway_reversibility_index_error.append(0.0)
                 #ignoring --  need to see if legacy component contribution can return these values
                 #pathway_standard_dg.append(res[2][0])
                 #pathway_standard_dg_error.append(res[2][1])
