@@ -10,12 +10,25 @@ import tempfile
 import os
 
 
+#TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
 class rpEquilibrator:
-    """
-    Collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
-    TODO: need to report when calculating the thermodynamics of reactions failed.... perhaps in the pathway add True/False tag to see
+    """Class containing collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis
     """
     def __init__(self, rpsbml=None, ph=7.5, ionic_strength=200, pMg=10.0, temp_k=298.15):
+        """Constructor class for rpEquilibrator
+
+        :param rpsbml: rpSBML object (Default: None)
+        :param ph: pH of the cell input from the rpSBML model input (Default: 7.5)
+        :param ionic_strength: Ionic strength from the rpSBML model input (Default: 200)
+        :param pMg: pMg value from the rpSBML model input (Default: 10.0)
+        :param temp_k: Temperature from the rpSBML model input in Kelvin (Default: 298.15)
+
+        :type rpsbml: rpSBML
+        :type ph: float
+        :type ionic_strength: float
+        :type pMg: float
+        :type temp_k: float
+        """
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpEquilibrator')
         self.cc = ComponentContribution()
@@ -27,7 +40,7 @@ class rpEquilibrator:
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.mnx_default_conc = json.load(open('/home/data/mnx_default_conc.json', 'r'))
+        self.mnx_default_conc = json.load(open('data/mnx_default_conc.json', 'r'))
         self.rpsbml = rpsbml
         self.calc_cmp = {}
     
@@ -36,21 +49,29 @@ class rpEquilibrator:
     ############################### PRIVATE ##########################################
     ##################################################################################
 
-    ## Retreive the id of a species to be used to query equilibrator
-    #
-    #
+
+    #TODO: metanetx.chemical:MNXM7 + bigg.metabolite:pi
     def _makeSpeciesStr(self, libsbml_species, ret_type='xref'):
-        """
-        example: {'inchikey': ['GPRLSGONYQIRFK-UHFFFAOYSA-N'], 'seed': ['cpd00067'], 'sabiork': ['39'], 'reactome': ['R-ALL-74722', 'R-ALL-70106', 'R-ALL-5668577', 'R-ALL-428548', 'R-ALL-428040', 'R-ALL-427899', 'R-ALL-425999', 'R-ALL-425978', 'R-ALL-425969', 'R-ALL-374900', 'R-ALL-372511', 'R-ALL-351626', 'R-ALL-2872447', 'R-ALL-2000349', 'R-ALL-194688', 'R-ALL-193465', 'R-ALL-163953', 'R-ALL-156540', 'R-ALL-1470067', 'R-ALL-113529', 'R-ALL-1132304'], 'metacyc': ['PROTON'], 'hmdb': ['HMDB59597'], 'chebi': ['5584', '13357', '10744', '15378'], 'bigg': ['M_h', 'h'], 'metanetx': ['MNXM89553', 'MNXM145872', 'MNXM1', 'MNXM01']}
+        """Private function that makes a Equilibrator friendly string of a species
+
+        :param libsbml_species: A libsbml species object
+        :param ret_type: Type of output. Valid output include: ['name', 'id', 'xref']
+
+        :type libsbml_species: libsbml.Species
+        :type ret_type: str
+
         Take a libsbml species object, parse the MIRIAM or the brsynth (if present) to return 
         the equilibrator appropriate string. The order of preference is the following:
+        example input MIRIAM annotation: {'inchikey': ['GPRLSGONYQIRFK-UHFFFAOYSA-N'], 'seed': ['cpd00067'], 'sabiork': ['39'], 'reactome': ['R-ALL-74722', 'R-ALL-70106', 'R-ALL-5668577', 'R-ALL-428548', 'R-ALL-428040', 'R-ALL-427899', 'R-ALL-425999', 'R-ALL-425978', 'R-ALL-425969', 'R-ALL-374900', 'R-ALL-372511', 'R-ALL-351626', 'R-ALL-2872447', 'R-ALL-2000349', 'R-ALL-194688', 'R-ALL-193465', 'R-ALL-163953', 'R-ALL-156540', 'R-ALL-1470067', 'R-ALL-113529', 'R-ALL-1132304'], 'metacyc': ['PROTON'], 'hmdb': ['HMDB59597'], 'chebi': ['5584', '13357', '10744', '15378'], 'bigg': ['M_h', 'h'], 'metanetx': ['MNXM89553', 'MNXM145872', 'MNXM1', 'MNXM01']}
         -KEGG
         -CHEBI
         #-bigg
         #-MNX
         -inchikey
         ret_type -> valid options (xref, id, name)
-        TODO: metanetx.chemical:MNXM7 + bigg.metabolite:pi
+
+        :rtype: str
+        :return: The string id of the species or False if fail
         """
         self.logger.debug('ret_type: '+str(ret_type))
         if ret_type=='name':
@@ -108,10 +129,20 @@ class rpEquilibrator:
             self.logger.warning('Cannot determine ret_type: '+str(ret_type))
 
 
-    ## Make the reaction formulae string to query equilibrator
-    #
-    #
     def _makeReactionStr(self, libsbml_reaction, ret_type='xref', ret_stoichio=True):
+        """Make the reaction formulae string to query equilibrator
+
+        :param libsbml_reaction: A libsbml reaction object
+        :param ret_type: Type of output. Valid output include: ['name', 'id', 'xref'] (Default: xref)
+        :param ret_stoichio: Return the stoichio or not (Default: True)
+
+        :type libsbml_reaction: libsbml.Reaction
+        :type ret_type: str
+        :type ret_stoichio: bool
+
+        :rtype: str
+        :return: The string id of the reaction or False if fail
+        """
         reac_str = ''
         for rea in libsbml_reaction.getListOfReactants():
             rea_str = self._makeSpeciesStr(self.rpsbml.model.getSpecies(rea.getSpecies()), ret_type)
@@ -141,10 +172,16 @@ class rpEquilibrator:
     ################### Equilibrator component contribution queries instead of using the native functions ###########
 
 
-    ## Use the native equilibrator-api compound contribution method
-    #
-    # @return Tuple of size two whith mu and sigma values in that order
     def _speciesCmpQuery(self, libsbml_species):
+        """Use the native equilibrator-api compound contribution method
+
+        :param libsbml_species: A libsbml species object
+
+        :type libsbml_species: libsbml.Reaction
+
+        :rtype: tuple
+        :return: Tuple of size two with mu and sigma values in that order or (None, None) if fail
+        """
         annot = libsbml_species.getAnnotation()
         if not annot:
             self.logger.warning('The annotation of '+str(libsbml_species)+' is None....')
@@ -190,13 +227,20 @@ class rpEquilibrator:
         return mu, sigma
 
 
-    ## If the string equilibrator query fails then fallback into the native equilibrator-api component contribution method
-    #
-    # This method makes a list of structure compounds and uses equilibrator to return the formation energy of a compound and the reaction dG
-    # TODO: add the concentration input as a list -- perhaps even store it within the SBML model
-    #
-    #
     def _reactionCmpQuery(self, libsbml_reaction, write_results=False, physio_param=1e-3):
+        """This method makes a list of structure compounds and uses equilibrator to return the reaction dG
+
+        :param libsbml_reaction: A libsbml reaction object
+        :param write_results: Write the results to the rpSBML file (Default: False)
+        :param physio_param: The physiological parameter, i.e. the concentration of the compounds to calculate the dG (Default: 1e-3)
+
+        :type libsbml_reaction: libsbml.Reaction
+        :type write_results: bool
+        :type physio_param: float
+
+        :rtype: tuple
+        :return: Tuple of size three with dfG_prime_o, dfG_prime_m, uncertainty values in that order or False if fail
+        """
         mus = []
         sigma_vecs = []
         S = []
@@ -269,8 +313,16 @@ class rpEquilibrator:
     '''
 
     def _reactionStrQuery(self, libsbml_reaction, write_results=False):
-        """
-        Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
+        """Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
+
+        :param libsbml_reaction: A libsbml reaction object
+        :param write_results: Write the results to the rpSBML file (Default: False)
+
+        :type libsbml_reaction: libsbml.Reaction
+        :type write_results: bool
+
+        :rtype: bool
+        :return: Success or failue of the function
         """
         #TODO: when an inchikey is passed, (and you don't have any other xref) and equilibrator finds the correct species then update the MIRIAM annotations
         reac_str = ''
