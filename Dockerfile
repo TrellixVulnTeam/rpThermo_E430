@@ -1,4 +1,4 @@
-FROM brsynth/rpcache:v2
+FROM brsynth/rpbase:v2
 
 RUN apt-get update
 RUN apt-get install -y openjdk-8-jdk
@@ -34,8 +34,10 @@ ENV CHEMAXON_LICENSE_URL /home/license.cxl
 RUN mkdir /home/data/
 COPY data/mnx_default_conc.json /home/data/
 
+COPY rpEquilibrator.py /home/
 COPY rpToolServe.py /home/
+
 COPY galaxy/code/tool_rpThermo.py /home/
 COPY galaxy/code/tool_rpMDF.py /home/
-COPY rpEquilibrator.py /home/
+COPY galaxy/code/tool_eqSBtab.py /home/
 

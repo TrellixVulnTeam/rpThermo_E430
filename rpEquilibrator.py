@@ -28,6 +28,13 @@ class rpEquilibrator:
         :type ionic_strength: float
         :type pMg: float
         :type temp_k: float
+
+        .. document private functions
+        .. automethod:: _makeSpeciesStr
+        .. automethod:: _makeReactionStr
+        .. automethod:: _speciesCmpQuery
+        .. automethod:: _reactionCmpQuery
+        .. automethod:: _reactionStrQuery
         """
         self.logger = logging.getLogger(__name__)
         self.logger.debug('Started instance of rpEquilibrator')
@@ -312,6 +319,7 @@ class rpEquilibrator:
         return False
     '''
 
+    #TODO: when an inchikey is passed, (and you don't have any other xref) and equilibrator finds the correct species then update the MIRIAM annotations
     def _reactionStrQuery(self, libsbml_reaction, write_results=False):
         """Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available
 
@@ -324,7 +332,6 @@ class rpEquilibrator:
         :rtype: bool
         :return: Success or failue of the function
         """
-        #TODO: when an inchikey is passed, (and you don't have any other xref) and equilibrator finds the correct species then update the MIRIAM annotations
         reac_str = ''
         try:
             reac_str = self._makeReactionStr(libsbml_reaction)
@@ -384,9 +391,18 @@ class rpEquilibrator:
     ################################################################################
 
 
+    #WARNING: taking the sum of the reaction thermodynamics is perhaps not the best way to do it
     def pathway(self, pathway_id='rp_pathway', write_results=True):
-        """
-        WARNING: taking the sum of the reaction thermodynamics is perhaps not the best way to do it
+        """Calculate the dG of a heterologous pathway
+
+        :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+        :param write_results: Write the results to the rpSBML file (Default: True)
+
+        :type pathway_id: str
+        :type write_results: bool
+
+        :rtype: tuple
+        :return: Tuple with the following information, in order: sum dG_prime, std dG_prime, sum dG_prime_o, std dG_prime_o, sum dG_prime_m, std dG_prime_m. Also False if function error.
         """
         groups = self.rpsbml.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -461,17 +477,23 @@ class rpEquilibrator:
         return (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime)), (np.sum(pathway_physiological_dg_prime), np.std(pathway_physiological_dg_prime)), (np.sum(pathway_standard_dg_prime), np.std(pathway_standard_dg_prime))
 
 
-
-    ## Create a network SBtab file used to calculate the pathway MDF
-    #
-    # @param output String input of the output path of the TSV file
-    # @param pathway_id String of the pathway id on which to generate the SBtab file
-    # @param thermo_id String of the thermodynamic id to use. If None, then its not added. If not added, then these values are not added and we rely on Equilibrator to find these values
-    # @param fba_id String of the FBA id to output to the file. If None, then default values of 1.0 for all reactions is added
-    # @return Boolean determining the status
     def toNetworkSBtab(self, output, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', stdev_factor=1.96):
-        """
-        Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF
+        """Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF
+
+        :param output: Output path of the TSV file
+        :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+        :param thermo_id: The id of the thermodynamics result to be exported to the SBtab file (Default: dfG_prime_o, Valid Options: [dfG_prime_o, dfG_prime_m])
+        :param fba_id: The id of the FBA value to be exported to SBtab (Default: fba_obj_fraction)
+        :param stdev_factor: The standard deviation factor (Default: 1.96)
+
+        :type output: str
+        :type pathway_id: str
+        :type thermo_id: str
+        :type fba_id: str
+        :type stdev_factor: float
+
+        :rtype: bool
+        :return: Success or failure of the function
         """
         groups = self.rpsbml.model.getPlugin('groups')
         rp_pathway = groups.getGroup(pathway_id)
@@ -619,8 +641,22 @@ class rpEquilibrator:
 
 
     def MDF(self, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', stdev_factor=1.96, write_results=True):
-        """
-        Perform MDF analysis on the retropath pathways
+        """Perform MDF analysis on the rpSBML file 
+
+        :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+        :param thermo_id: The id of the thermodynamics result to be exported to the SBtab file (Default: dfG_prime_o, Valid Options: [dfG_prime_o, dfG_prime_m])
+        :param fba_id: The id of the FBA value to be exported to SBtab (Default: fba_obj_fraction)
+        :param stdev_factor: The standard deviation factor (Default: 1.96)
+        :param write_results: Write the results to the rpSBML file (Default: True)
+
+        :type pathway_id: str
+        :type thermo_id: str
+        :type fba_id: str
+        :type stdev_factor: float
+        :type write_results: bool
+
+        :rtype: float
+        :return: MDF of the pathway
         """
         to_ret_mdf = None
         groups = self.rpsbml.model.getPlugin('groups')
@@ -649,9 +685,3 @@ class rpEquilibrator:
                 self.logger.warning('Some species are invalid: '+str(e))
                 self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
         return to_ret_mdf
-
-
-
-#######################
-#m = component_contribution.molecule.Molecule()
-#s = m.FromInChI('InChI=1S/C6H6O4/c7-5(8)3-1-2-4-6(9)10/h1-4H,(H,7,8)(H,9,10)/b3-1+,4-2+')

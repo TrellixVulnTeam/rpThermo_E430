@@ -20,11 +20,18 @@ import rpSBML
 
 ###################### Multi ###############
 
-
-## Seperate an array into equal lengths
-#
-#
 def chunkIt(seq, num):
+    """Seperate an array into equal lengths
+
+    :param seq: The arrray to seperate
+    :param num: The number of chunks to seperate the array into
+
+    :type seq: list
+    :type num: int
+
+    :rtype: list
+    :return: 2D list of chunks
+    """
     avg = len(seq) / float(num)
     out = []
     last = 0.0
@@ -34,10 +41,30 @@ def chunkIt(seq, num):
     return out
 
 
-## Less memory effecient than the _hdd method but faster
-#
-#
 def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a list of rpSBML input files, perform thermodynamics analysis. Less memory effecient than the _hdd method but faster
+
+    :param sbml_paths: The list of rpSBML paths passed to calculate thermodynamics
+    :param pathway_id: The id of the heterologous pathway of interest
+    :param tmpOutputFolder: The path to the output folder to write the result rpSBML file
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type sbml_paths: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k, stdev_factor=stdev_factor)
     for sbml_path in sbml_paths:
         logging.debug('Calculating the thermodynamics of the pathway '+str(pathway_id)+' for the file: '+str(sbml_path))
@@ -137,6 +164,30 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
 ############################# single core ##########################
 
 def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    """Given a tar input file, perform thermodynamics analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
@@ -168,6 +219,32 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_st
 
 
 def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a tar input file, perform MDF analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+    :param thermo_id: The id of the thermodynamics id (Default: dfG_prime_o)
+    :param fba_id: The id of the FBA value (Default: fba_obj_fraction)
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
@@ -200,6 +277,32 @@ def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prim
 
 
 def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, thermo_id='dfG_prime_o', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a tar input file, perform MDF analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+    :param fba_id: The id of the FBA value. Default sets all FBA values to 1.0 and if specified (Default: None)
+    :param thermo_id: The id of the thermodynamics id (Default: dfG_prime_o)
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
     rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k, stdev_factor=stdev_factor)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
         with tempfile.TemporaryDirectory() as tmpOutputFolder:

@@ -27,8 +27,35 @@ def main(inputfile,
          ionic_strength=200.0,
          pMg=10.0,
          temp_k=298.15):
+    """Given a tar input file, generate the SBtab for each rpSBML file by calling the docker
+
+    :param inputfile: The path to the input file (Either TAR of rpSBML or single rpSBML)
+    :param input_format: Either TAR and rpSBML (Valid options: [tar, sbml])
+    :param output: The path to the output file
+    :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+    :param fba_id: The id of the FBA objective. If None all fluxes are set to 1.0 (Default: None)
+    :param thermo_id: The thermodynamics used (Default: dfG_prime_o)
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+
+    :type inputfile: str
+    :type input_format: str
+    :type output: str
+    :type pathway_id: str
+    :type fba_id: str
+    :type thermo_id: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+
+    :rtype: None
+    :return: None
+    """
     docker_client = docker.from_env()
-    image_str = 'brsynth/rpthermo-standalone:equilibrator'
+    image_str = 'brsynth/rpthermo-standalone:v2'
     try:
         image = docker_client.images.get(image_str)
     except docker.errors.ImageNotFound:
