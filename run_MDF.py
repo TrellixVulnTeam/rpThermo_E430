@@ -14,9 +14,6 @@ import shutil
 import docker
 
 
-##
-#
-#
 def main(inputfile, 
          input_format,
          output,
@@ -67,58 +64,58 @@ def main(inputfile,
             logging.error('Cannot pull image: '+str(image_str))
             exit(1)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
-        shutil.copy(inputfile, tmpOutputFolder+'/input.dat')
-        command = ['/home/tool_rpMDF.py',
-                   '-input',
-                   '/home/tmp_output/input.dat',
-                   '-input_format',
-                   str(input_format),
-                   '-pathway_id',
-                   str(pathway_id),
-                   '-thermo_id',
-                   str(pathway_id),
-                   '-fba_id',
-                   str(pathway_id),
-                   '-ph',
-                   str(ph),
-                   '-ionic_strength',
-                   str(ionic_strength),
-                   '-pMg',
-                   str(pMg),
-                   '-temp_k',
-                   str(temp_k),
-                   '-output',
-                   '/home/tmp_output/output.dat']
-        container = docker_client.containers.run(image_str, 
-                                                 command, 
-                                                 detach=True, 
-                                                 stderr=True, 
-                                                 volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
-        container.wait()
-        err = container.logs(stdout=False, stderr=True)
-        err_str = err.decode('utf-8')
-        if 'ERROR' in err_str:
-            print(err_str)
-        if 'WARNING' in err_str:
-            print(err_str)
-            shutil.copy(tmpOutputFolder+'/output.dat', output)
+        if os.path.exists(inputfile):
+            shutil.copy(inputfile, tmpOutputFolder+'/input.dat')
+            command = ['/home/tool_rpMDF.py',
+                       '-input',
+                       '/home/tmp_output/input.dat',
+                       '-input_format',
+                       str(input_format),
+                       '-pathway_id',
+                       str(pathway_id),
+                       '-thermo_id',
+                       str(thermo_id),
+                       '-fba_id',
+                       str(fba_id),
+                       '-ph',
+                       str(ph),
+                       '-ionic_strength',
+                       str(ionic_strength),
+                       '-pMg',
+                       str(pMg),
+                       '-temp_k',
+                       str(temp_k),
+                       '-output',
+                       '/home/tmp_output/output.dat']
+            container = docker_client.containers.run(image_str, 
+                                                     command, 
+                                                     detach=True, 
+                                                     stderr=True, 
+                                                     volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
+            container.wait()
+            err = container.logs(stdout=False, stderr=True)
+            err_str = err.decode('utf-8')
+            if 'ERROR' in err_str:
+                print(err_str)
+            elif 'WARNING' in err_str:
+                print(err_str)
+            if not os.path.exists(tmpOutputFolder+'/output.dat'):
+                logging.error('ERROR: Did not generate an output file')
+            else:
+                shutil.copy(tmpOutputFolder+'/output.dat', output)
+            container.remove()
         else:
-            shutil.copy(tmpOutputFolder+'/output.dat', output)
-        container.remove()
+            logging.error('The input file cannot be found: '+str(input_sbml))
+            exit(1)
 
 
-
-
-##
-#
-#
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Python wapper to execute the MDF on rpSBML heterologous pathways')
     parser.add_argument('-input', type=str)
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
-    parser.add_argument('-fba_id', type=str, default='None')
+    parser.add_argument('-fba_id', type=str, default='fba_obj_fraction')
     parser.add_argument('-thermo_id', type=str, default='dfG_prime_o')
     parser.add_argument('-ph', type=float, default=7.0)
     parser.add_argument('-ionic_strength', type=float, default=200.0)

@@ -34,22 +34,12 @@ if __name__ == "__main__":
     parser.add_argument('-temp_k', type=float, default=298.15)
     parser.add_argument('-stdev_factor', type=float, default=1.96)
     params = parser.parse_args()
-    if params.fba_id==True or params.fba_id=='True' or params.fba_id=='true':
-        fba_id = True
-    elif params.fba_id==False or params.fba_id=='False' or params.fba_id=='false':
-        fba_id = False
+    if params.fba_id=='None':
+        fba_id = None
     else:
-        logging.error('Cannot interpret '+str(params.fba_id))
-        exit(1)
-    if params.thermo_id==True or params.thermo_id=='True' or params.thermo_id=='true':
-        thermo_id = True
-    elif params.thermo_id==False or params.thermo_id=='False' or params.thermo_id=='false':
-        thermo_id = False
-    else:
-        logging.error('Cannot interpret '+str(params.thermo_id))
-        exit(1)
+        fba_id = params.fba_id
     if params.input_format=='tar':
-        rpToolServe.runEqSBtab_hdd(params.input, params.output, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
+        rpToolServe.runEqSBtab_hdd(params.input, params.output, params.pathway_id, fba_id, params.thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
     elif params.input_format=='sbml':
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
@@ -58,7 +48,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single_rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.runEqSBtab_hdd(inputTar, outputTar, params.pathway_id, fba_id, thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
+            rpToolServe.runEqSBtab_hdd(inputTar, outputTar, params.pathway_id, fba_id, params.thermo_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.xml')

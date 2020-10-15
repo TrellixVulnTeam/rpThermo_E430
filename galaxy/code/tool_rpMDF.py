@@ -25,9 +25,6 @@ logging.basicConfig(
 sys.path.insert(0, '/home/')
 import rpToolServe
 
-##
-#
-#
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Calculate the Min-Max Driving Force (MDF) of heterologous pathways')
     parser.add_argument('-input', type=str)

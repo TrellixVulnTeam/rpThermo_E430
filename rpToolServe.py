@@ -303,7 +303,7 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
     :rtype: bool
     :return: Success or failure of the function
     """
-    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k, stdev_factor=stdev_factor)
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpInputFolder:
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -317,7 +317,7 @@ def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, th
                 fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '') 
                 rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
                 rpequilibrator.rpsbml = rpsbml
-                status = rpequilibrator.toNetworkSBtab(os.path.join(tmpOutputFolder, fileName+'.tsv'), pathway_id, thermo_id, fba_id)
+                status = rpequilibrator.toNetworkSBtab(os.path.join(tmpOutputFolder, fileName+'.tsv'), pathway_id, thermo_id, fba_id, stdev_factor)
                 rpsbml = None
             if len(glob.glob(tmpOutputFolder+'/*'))==0:
                 logging.error('rpThermo has not produced any results')

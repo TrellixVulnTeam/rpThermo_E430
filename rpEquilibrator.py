@@ -582,16 +582,16 @@ class rpEquilibrator:
             for react in [self.rpsbml.model.getReaction(i.getIdRef()) for i in rp_pathway.getListOfMembers()]:
                 brs_annot = self.rpsbml.readBRSYNTHAnnotation(react.getAnnotation())
                 if fba_id:
-                    if fba_id in react:
+                    if fba_id in brs_annot:
                         #the saved value is mmol_per_gDW_per_hr while rpEq required mmol_per_s
                         #WARNING: rpEq says that these values are mMol/s while here we have mMol/gDw/h. However not changing since this would mean doing /3600 and
                         #given the values that seems wrong
-                        fo.write("rate of reaction\t"+str(rea_id)+"\t"+str(brs_annot[fba_id]['value'])+"\t\n")
+                        fo.write("rate of reaction\t"+str(react.getId())+"\t"+str(brs_annot[fba_id]['value'])+"\t\n")
                     else:
                         self.logger.warning('Cannot retreive the FBA value '+str(fba_id)+'. Setting a default value of 1.')
-                        fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
+                        fo.write("rate of reaction\t"+str(react.getId())+"\t1\t\n")
                 else:
-                    fo.write("rate of reaction\t"+str(rea_id)+"\t1\t\n")
+                    fo.write("rate of reaction\t"+str(react.getId())+"\t1\t\n")
             ################## Add the concentration bounds ##############################
             fo.write("\t\t\t\n")
             fo.write("!!SBtab TableID='ConcentrationConstraint' TableType='Quantity' Unit='mM'\t\t\t\n")
@@ -663,14 +663,20 @@ class rpEquilibrator:
         rp_pathway = groups.getGroup(pathway_id)
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             path_sbtab = os.path.join(tmpOutputFolder, 'tmp_sbtab.tsv')
-            sbtab_status = self.toNetworkSBtab(path_sbtab, pathway_id, thermo_id, fba_id, stdev_factor)
+            sbtab_status = self.toNetworkSBtab(path_sbtab, pathway_id=pathway_id, thermo_id=thermo_id, fba_id=fba_id, stdev_factor=stdev_factor)
             if not sbtab_status:
                 self.logger.error('There was a problem generating the SBtab... aborting')
                 return 0.0
             try:
                 pp = Pathway.from_sbtab(path_sbtab, comp_contrib=self.cc)
                 pp.update_standard_dgs()
-                mdf_sol = pp.calc_mdf()
+                try:
+                    mdf_sol = pp.calc_mdf()
+                except:
+                    self.logger.warning('The calc_mdf function failed')
+                    self.logger.warning('Exception: Cannot solve MDF primal optimization problem')
+                    self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
+                    return 0.0
                 #mdf_sol = pp.mdf_analysis()
                 #plt_reac_plot = mdf_sol.reaction_plot
                 #plt_cmp_plot = mdf_sol.compound_plot
@@ -681,7 +687,9 @@ class rpEquilibrator:
                 self.logger.warning('Cannot calculate MDF')
                 self.logger.warning(e)
                 self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
+                return 0.0
             except equilibrator_cache.exceptions.MissingDissociationConstantsException as e:
                 self.logger.warning('Some species are invalid: '+str(e))
                 self.rpsbml.addUpdateBRSynth(rp_pathway, 'MDF', 0.0, 'kj_per_mol')
+                return 0.0
         return to_ret_mdf

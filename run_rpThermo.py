@@ -61,41 +61,45 @@ def main(inputfile,
             logging.error('Cannot pull image: '+str(image_str))
             exit(1)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
-        shutil.copy(inputfile, tmpOutputFolder+'/input.dat')
-        command = ['/home/tool_rpThermo.py',
-                   '-input',
-                   '/home/tmp_output/input.dat',
-                   '-input_format',
-                   str(input_format),
-                   '-pathway_id',
-                   str(pathway_id),
-                   '-ph',
-                   str(ph),
-                   '-ionic_strength',
-                   str(ionic_strength),
-                   '-pMg',
-                   str(pMg),
-                   '-temp_k',
-                   str(temp_k),
-                   '-output',
-                   '/home/tmp_output/output.dat']
-        container = docker_client.containers.run(image_str, 
-                                                 command, 
-                                                 detach=True, 
-                                                 stderr=True, 
-                                                 volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
-        container.wait()
-        err = container.logs(stdout=False, stderr=True)
-        err_str = err.decode('utf-8')
-        if not 'ERROR' in err_str:
+        if os.path.exists(inputfile):
+            shutil.copy(inputfile, tmpOutputFolder+'/input.dat')
+            command = ['/home/tool_rpThermo.py',
+                       '-input',
+                       '/home/tmp_output/input.dat',
+                       '-input_format',
+                       str(input_format),
+                       '-pathway_id',
+                       str(pathway_id),
+                       '-ph',
+                       str(ph),
+                       '-ionic_strength',
+                       str(ionic_strength),
+                       '-pMg',
+                       str(pMg),
+                       '-temp_k',
+                       str(temp_k),
+                       '-output',
+                       '/home/tmp_output/output.dat']
+            container = docker_client.containers.run(image_str, 
+                                                     command, 
+                                                     detach=True, 
+                                                     stderr=True, 
+                                                     volumes={tmpOutputFolder+'/': {'bind': '/home/tmp_output', 'mode': 'rw'}})
+            container.wait()
+            err = container.logs(stdout=False, stderr=True)
+            err_str = err.decode('utf-8')
+            if 'ERROR' in err_str:
+                print(err_str)
+            elif 'WARNING' in err_str:
+                print(err_str)
             if not os.path.exists(tmpOutputFolder+'/output.dat'):
                 print('ERROR: Cannot find the output file: '+str(tmpOutputFolder+'/output.dat'))
-                print(err_str)
             else:
                 shutil.copy(tmpOutputFolder+'/output.dat', output)
+            container.remove()
         else:
-            print(err_str)
-        container.remove()
+            logging.error('The input file does not seem to exist: '+str(inputfile))
+            exit(1)
 
 
 
