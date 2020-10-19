@@ -22,7 +22,7 @@ Welcome to the documentation of the rpThermodynamics project. The different scri
 Usage
 #####
 
-First build the rpBase_ docker before building the local docker using the follwing command:
+First build the rpBase_ docker before building the local docker using the following command:
 
 .. code-block:: bash
 
