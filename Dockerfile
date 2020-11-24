@@ -1,4 +1,4 @@
-FROM brsynth/rpbase:v2
+FROM brsynth/rpbase
 
 RUN apt-get update
 RUN apt-get install -y openjdk-8-jdk
