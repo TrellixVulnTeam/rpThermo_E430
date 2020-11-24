@@ -13,7 +13,6 @@ import tempfile
 import os
 import logging
 import sys
-import glob
 
 logging.basicConfig(
     #level=logging.DEBUG,
@@ -23,26 +22,25 @@ logging.basicConfig(
     datefmt='%d-%m-%Y %H:%M:%S',
 )
 
-
 sys.path.insert(0, '/home/')
 import rpToolServe
 
-##
-#
-#
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser('Python wrapper to add cofactors to generate rpSBML collection')
+    parser = argparse.ArgumentParser('Calculate the Min-Max Driving Force (MDF) of heterologous pathways')
     parser.add_argument('-input', type=str)
     parser.add_argument('-output', type=str)
     parser.add_argument('-input_format', type=str)
     parser.add_argument('-pathway_id', type=str, default='rp_pathway')
+    parser.add_argument('-fba_id', type=str, default='fba_obj_fraction')
+    parser.add_argument('-thermo_id', type=str, default='dfG_prime_o')
     parser.add_argument('-ph', type=float, default=7.5)
     parser.add_argument('-ionic_strength', type=float, default=200.0)
     parser.add_argument('-pMg', type=float, default=10.0)
     parser.add_argument('-temp_k', type=float, default=298.15)
+    parser.add_argument('-stdev_factor', type=float, default=1.96)
     params = parser.parse_args()
     if params.input_format=='tar':
-        rpToolServe.runThermo_hdd(params.input, params.output, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+        rpToolServe.runMDF_hdd(params.input, params.output, params.pathway_id, params.thermo_id, params.fba_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
     elif params.input_format=='sbml':
         with tempfile.TemporaryDirectory() as tmpOutputFolder:
             inputTar = tmpOutputFolder+'/tmp_input.tar.xz'
@@ -51,7 +49,7 @@ if __name__ == "__main__":
                 info = tarfile.TarInfo('single_rpsbml.xml') #need to change the name since galaxy creates .dat files
                 info.size = os.path.getsize(params.input)
                 tf.addfile(tarinfo=info, fileobj=open(params.input, 'rb'))
-            rpToolServe.runThermo_hdd(inputTar, outputTar, params.pathway_id, params.ph, params.ionic_strength, params.pMg, params.temp_k)
+            rpToolServe.runMDF_hdd(inputTar, outputTar, params.pathway_id, params.thermo_id, params.fba_id, params.ph, params.ionic_strength, params.pMg, params.temp_k, params.stdev_factor)
             with tarfile.open(outputTar) as outTar:
                 outTar.extractall(tmpOutputFolder)
             out_file = glob.glob(tmpOutputFolder+'/*.xml')

@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>rpThermo’s Documentation &#8212; rpThermo v0.2 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="rpthermo-s-documentation">
+<h1>rpThermo’s Documentation<a class="headerlink" href="#rpthermo-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Welcome to the documentation of the rpThermodynamics project. The different scripts extend the <a class="reference external" href="http://equilibrator.weizmann.ac.il/">Equilibrator</a> project to perform thermodynamics analyis of heterologous pathways. Furthermore, one can calculate the MDF of pathways and convert the rpSBML files to SBtab that is <a class="reference external" href="http://equilibrator.weizmann.ac.il/">Equilibrator</a> friendly.</p>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>First build the <a class="reference external" href="https://github.com/Galaxy-SynBioCAD/rpBase">rpBase</a> docker before building the local docker using the follwing command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker build -t brsynth/rpthermo-standalone:v2 -f Dockerfile .
+</pre></div>
+</div>
+<p>rpThermo depends on the Marvin library and thus, you need to have a valid license.cxl that is in the same folder as the Dockerfile. Furthermore, you need to download the deb <a class="reference external" href="https://chemaxon.com/products/marvin/download">Marvin</a> file (tested version is 20.9) and also place it in the same folder as the Dockerfile.</p>
+<p>Then you can call the docker using the command line interface using the following script:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python run_rpThermo.py -input /path/to/file_rpsbml.tar.gz -input_format tar -output /path/to/outfile.tar.gz
+</pre></div>
+</div>
+<p>The same type of script may be called locally for calculating <a class="reference external" href="http://equilibrator.weizmann.ac.il/static/classic_rxns/pathway.html#mdf">MDF</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python run_MDF.py -input /path/to/file_rpsbml.tar.gz -input_format tar -output /path/to/outfile.tar.gz
+</pre></div>
+</div>
+<p>Lastly, the rpSBML pathway files can be converted <a class="reference external" href="http://equilibrator.weizmann.ac.il/pathway/">SBtab</a>’s that are Equilibrator friendly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python run_eqSBtab.py -input /path/to/file_rpsbml.tar.gz -input_format tar -output /path/to/outfile.tar.gz
+</pre></div>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="class">
+<dt id="rpEquilibrator.rpEquilibrator">
+<em class="property">class </em><code class="descclassname">rpEquilibrator.</code><code class="descname">rpEquilibrator</code><span class="sig-paren">(</span><em>rpsbml=None</em>, <em>ph=7.5</em>, <em>ionic_strength=200</em>, <em>pMg=10.0</em>, <em>temp_k=298.15</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class containing collection of functions to intereact between rpSBML files and equilibrator. Includes a function to convert an rpSBML file to a SBtab format for MDF analysis</p>
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator.MDF">
+<code class="descname">MDF</code><span class="sig-paren">(</span><em>pathway_id='rp_pathway'</em>, <em>thermo_id='dfG_prime_o'</em>, <em>fba_id='fba_obj_fraction'</em>, <em>stdev_factor=1.96</em>, <em>write_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator.MDF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform MDF analysis on the rpSBML file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>thermo_id</strong> (<em>str</em>) – The id of the thermodynamics result to be exported to the SBtab file (Default: dfG_prime_o, Valid Options: [dfG_prime_o, dfG_prime_m])</p></li>
+<li><p><strong>fba_id</strong> (<em>str</em>) – The id of the FBA value to be exported to SBtab (Default: fba_obj_fraction)</p></li>
+<li><p><strong>stdev_factor</strong> (<em>float</em>) – The standard deviation factor (Default: 1.96)</p></li>
+<li><p><strong>write_results</strong> (<em>bool</em>) – Write the results to the rpSBML file (Default: True)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>MDF of the pathway</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator._makeReactionStr">
+<code class="descname">_makeReactionStr</code><span class="sig-paren">(</span><em>libsbml_reaction</em>, <em>ret_type='xref'</em>, <em>ret_stoichio=True</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator._makeReactionStr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make the reaction formulae string to query equilibrator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>libsbml_reaction</strong> (<em>libsbml.Reaction</em>) – A libsbml reaction object</p></li>
+<li><p><strong>ret_type</strong> (<em>str</em>) – Type of output. Valid output include: [‘name’, ‘id’, ‘xref’] (Default: xref)</p></li>
+<li><p><strong>ret_stoichio</strong> (<em>bool</em>) – Return the stoichio or not (Default: True)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The string id of the reaction or False if fail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator._makeSpeciesStr">
+<code class="descname">_makeSpeciesStr</code><span class="sig-paren">(</span><em>libsbml_species</em>, <em>ret_type='xref'</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator._makeSpeciesStr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Private function that makes a Equilibrator friendly string of a species</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>libsbml_species</strong> (<em>libsbml.Species</em>) – A libsbml species object</p></li>
+<li><p><strong>ret_type</strong> (<em>str</em>) – Type of output. Valid output include: [‘name’, ‘id’, ‘xref’]</p></li>
+</ul>
+</dd>
+</dl>
+<p>Take a libsbml species object, parse the MIRIAM or the brsynth (if present) to return 
+the equilibrator appropriate string. The order of preference is the following:
+example input MIRIAM annotation: {‘inchikey’: [‘GPRLSGONYQIRFK-UHFFFAOYSA-N’], ‘seed’: [‘cpd00067’], ‘sabiork’: [‘39’], ‘reactome’: [‘R-ALL-74722’, ‘R-ALL-70106’, ‘R-ALL-5668577’, ‘R-ALL-428548’, ‘R-ALL-428040’, ‘R-ALL-427899’, ‘R-ALL-425999’, ‘R-ALL-425978’, ‘R-ALL-425969’, ‘R-ALL-374900’, ‘R-ALL-372511’, ‘R-ALL-351626’, ‘R-ALL-2872447’, ‘R-ALL-2000349’, ‘R-ALL-194688’, ‘R-ALL-193465’, ‘R-ALL-163953’, ‘R-ALL-156540’, ‘R-ALL-1470067’, ‘R-ALL-113529’, ‘R-ALL-1132304’], ‘metacyc’: [‘PROTON’], ‘hmdb’: [‘HMDB59597’], ‘chebi’: [‘5584’, ‘13357’, ‘10744’, ‘15378’], ‘bigg’: [‘M_h’, ‘h’], ‘metanetx’: [‘MNXM89553’, ‘MNXM145872’, ‘MNXM1’, ‘MNXM01’]}
+-KEGG
+-CHEBI
+#-bigg
+#-MNX
+-inchikey
+ret_type -&gt; valid options (xref, id, name)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The string id of the species or False if fail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator._reactionCmpQuery">
+<code class="descname">_reactionCmpQuery</code><span class="sig-paren">(</span><em>libsbml_reaction</em>, <em>write_results=False</em>, <em>physio_param=0.001</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator._reactionCmpQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method makes a list of structure compounds and uses equilibrator to return the reaction dG</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>libsbml_reaction</strong> (<em>libsbml.Reaction</em>) – A libsbml reaction object</p></li>
+<li><p><strong>write_results</strong> (<em>bool</em>) – Write the results to the rpSBML file (Default: False)</p></li>
+<li><p><strong>physio_param</strong> (<em>float</em>) – The physiological parameter, i.e. the concentration of the compounds to calculate the dG (Default: 1e-3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple of size three with dfG_prime_o, dfG_prime_m, uncertainty values in that order or False if fail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator._reactionStrQuery">
+<code class="descname">_reactionStrQuery</code><span class="sig-paren">(</span><em>libsbml_reaction</em>, <em>write_results=False</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator._reactionStrQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the string reaction from a libSBML reaction object to send to equilibrator and return the different thermodynamics analysis available</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>libsbml_reaction</strong> (<em>libsbml.Reaction</em>) – A libsbml reaction object</p></li>
+<li><p><strong>write_results</strong> (<em>bool</em>) – Write the results to the rpSBML file (Default: False)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Success or failue of the function</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator._speciesCmpQuery">
+<code class="descname">_speciesCmpQuery</code><span class="sig-paren">(</span><em>libsbml_species</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator._speciesCmpQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the native equilibrator-api compound contribution method</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>libsbml_species</strong> (<em>libsbml.Reaction</em>) – A libsbml species object</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple of size two with mu and sigma values in that order or (None, None) if fail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator.pathway">
+<code class="descname">pathway</code><span class="sig-paren">(</span><em>pathway_id='rp_pathway'</em>, <em>write_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator.pathway" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the dG of a heterologous pathway</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>write_results</strong> (<em>bool</em>) – Write the results to the rpSBML file (Default: True)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple with the following information, in order: sum dG_prime, std dG_prime, sum dG_prime_o, std dG_prime_o, sum dG_prime_m, std dG_prime_m. Also False if function error.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="rpEquilibrator.rpEquilibrator.toNetworkSBtab">
+<code class="descname">toNetworkSBtab</code><span class="sig-paren">(</span><em>output</em>, <em>pathway_id='rp_pathway'</em>, <em>thermo_id='dfG_prime_o'</em>, <em>fba_id='fba_obj_fraction'</em>, <em>stdev_factor=1.96</em><span class="sig-paren">)</span><a class="headerlink" href="#rpEquilibrator.rpEquilibrator.toNetworkSBtab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert an SBML pathway to a simple network for input to equilibrator-pathway for MDF</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output</strong> (<em>str</em>) – Output path of the TSV file</p></li>
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>thermo_id</strong> (<em>str</em>) – The id of the thermodynamics result to be exported to the SBtab file (Default: dfG_prime_o, Valid Options: [dfG_prime_o, dfG_prime_m])</p></li>
+<li><p><strong>fba_id</strong> (<em>str</em>) – The id of the FBA value to be exported to SBtab (Default: fba_obj_fraction)</p></li>
+<li><p><strong>stdev_factor</strong> (<em>float</em>) – The standard deviation factor (Default: 1.96)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Success or failure of the function</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="run_rpThermo.main">
+<em class="property">class </em><code class="descclassname">run_rpThermo.</code><code class="descname">main</code><a class="headerlink" href="#run_rpThermo.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a tar input file, perform Thermodynamics analysis for each rpSBML file by calling the docker</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inputfile</strong> (<em>str</em>) – The path to the input file (Either TAR of rpSBML or single rpSBML)</p></li>
+<li><p><strong>input_format</strong> (<em>str</em>) – Either TAR and rpSBML (Valid options: [tar, sbml])</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – The path to the output file</p></li>
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>ph</strong> (<em>float</em>) – The pH of the host organism (Default: 7.0)</p></li>
+<li><p><strong>ionic_strength</strong> (<em>float</em>) – Ionic strenght of the host organism (Default: 200.0)</p></li>
+<li><p><strong>pMg</strong> (<em>float</em>) – The pMg of the host organism (Default: 10.0)</p></li>
+<li><p><strong>temp_k</strong> (<em>float</em>) – The temperature of the host organism in Kelvin (Default: 298.15)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="run_MDF.main">
+<em class="property">class </em><code class="descclassname">run_MDF.</code><code class="descname">main</code><a class="headerlink" href="#run_MDF.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a tar input file, perform MDF analysis for each rpSBML file by calling the docker</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inputfile</strong> (<em>str</em>) – The path to the input file (Either TAR of rpSBML or single rpSBML)</p></li>
+<li><p><strong>input_format</strong> (<em>str</em>) – Either TAR and rpSBML (Valid options: [tar, sbml])</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – The path to the output file</p></li>
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>fba_id</strong> (<em>str</em>) – The id of the FBA objective. If None all fluxes are set to 1.0 (Default: None)</p></li>
+<li><p><strong>thermo_id</strong> (<em>str</em>) – The thermodynamics used (Default: dfG_prime_o)</p></li>
+<li><p><strong>ph</strong> (<em>float</em>) – The pH of the host organism (Default: 7.0)</p></li>
+<li><p><strong>ionic_strength</strong> (<em>float</em>) – Ionic strenght of the host organism (Default: 200.0)</p></li>
+<li><p><strong>pMg</strong> (<em>float</em>) – The pMg of the host organism (Default: 10.0)</p></li>
+<li><p><strong>temp_k</strong> (<em>float</em>) – The temperature of the host organism in Kelvin (Default: 298.15)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="run_eqSBtab.main">
+<em class="property">class </em><code class="descclassname">run_eqSBtab.</code><code class="descname">main</code><a class="headerlink" href="#run_eqSBtab.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a tar input file, generate the SBtab for each rpSBML file by calling the docker</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>inputfile</strong> (<em>str</em>) – The path to the input file (Either TAR of rpSBML or single rpSBML)</p></li>
+<li><p><strong>input_format</strong> (<em>str</em>) – Either TAR and rpSBML (Valid options: [tar, sbml])</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – The path to the output file</p></li>
+<li><p><strong>pathway_id</strong> (<em>str</em>) – The id of the heterologous pathway of interest (Default: rp_pathway)</p></li>
+<li><p><strong>fba_id</strong> (<em>str</em>) – The id of the FBA objective. If None all fluxes are set to 1.0 (Default: None)</p></li>
+<li><p><strong>thermo_id</strong> (<em>str</em>) – The thermodynamics used (Default: dfG_prime_o)</p></li>
+<li><p><strong>ph</strong> (<em>float</em>) – The pH of the host organism (Default: 7.0)</p></li>
+<li><p><strong>ionic_strength</strong> (<em>float</em>) – Ionic strenght of the host organism (Default: 200.0)</p></li>
+<li><p><strong>pMg</strong> (<em>float</em>) – The pMg of the host organism (Default: 10.0)</p></li>
+<li><p><strong>temp_k</strong> (<em>float</em>) – The temperature of the host organism in Kelvin (Default: 298.15)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">rpThermo</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Melchior du Lac.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

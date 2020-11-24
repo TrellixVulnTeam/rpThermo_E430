@@ -1,21 +1,20 @@
-<tool id="rpThermo" name="Thermodynamics" version="0.1">
-  <description>Calculate the formation energy of chemical species and the Gibbs free energy of their reactions and pathways in an SBML</description>
+<tool id="rpMDF" name="Min-Max Driving Force" version="0.1">
+  <description>Min-Max Driving Force </description>
   <requirements>
-		<container type="docker">brsynth/rpthermo-standalone:v2</container>
+		<container type="docker">brsynth/rpthermo-standalone:equilibrator</container>
   </requirements>
   <stdio>
 		<regex match="WARNING:" level="warning" />
 		<regex match="ERROR:" level="error" />
-		<regex match="ERROR:root:ChemAxon" level="warning" />
 	</stdio>
   <command detect_errors="exit_code"><![CDATA[
-    '$__tool_directory__/tool_rpThermo.py' -input '$input_type.input' -output '$output' -pathway_id '$adv.pathway_id' -input_format '$input_type.input_format' -ph '$adv.ph' -ionic_strength '$adv.ionic_strength' -pMg '$adv.pMg' -temp_k '$adv.temp_k' 
+    '$__tool_directory__/tool_rpMDF.py' -input '$input_type.input' -output '$output' -pathway_id '$adv.pathway_id' -input_format '$input_type.input_format' -ph '$adv.ph' -ionic_strength '$adv.ionic_strength' -pMg '$adv.pMg' -temp_k '$adv.temp_k' 
   ]]></command>
   <inputs>
     <conditional name="input_type">
       <param name="input_format" type="select" label="Input/output format">
-        <option value="tar" selected="True">TAR</option>
-        <option value="sbml" >SBML</option>
+        <option value="tar">TAR</option>
+        <option value="sbml" selected="True">SBML</option>
       </param>
       <when value="tar">
         <param name="input" type="data" format="tar" label="Input file" />
@@ -26,6 +25,8 @@
     </conditional>
     <section name="adv" title="Advanced Options" expanded="false">
       <param name="pathway_id" type="text" value="rp_pathway" label="SBML heterologous pathway ID" />
+      <param name="fba_id" type="text" value="fba_obj_fraction" label="FBA objective id value to use to calculate MDF" />
+      <param name="thermo_id" type="text" value="dfG_prime_o" label="Thermodynamic value to use to calculate MDF" />
       <param name="ph" type="float" value="7.5" label="Compartment PH of the pathway" />
       <param name="ionic_strength" type="float" value="200.0" label="Compartment ionic strength of the pathway" />
       <param name="pMg" type="float" value="10.0" label="Compartment pMg of the pathway" />
@@ -40,18 +41,10 @@
 		</data>	
   </outputs>
   <help><![CDATA[
-Thermodynamics
+Min-Max Driving Force
 ===============
 
 Calculate the formation energy of chemical species either using an internal database or estimate it by decomposing them using the `component contribution <https://gitlab.com/elad.noor/component-contribution>`_ method. Thereafter this tool predicts the Gibbs free energy of reactions and of the whole heterologous pathway by combining the formation energy of each individual compound.  
-
-.. image:: https://raw.githubusercontent.com/Galaxy-SynBioCAD/rpThermo/standalone/galaxy/img/rpThermo.png 
-	:width: 80 %
-	:align: center
-
-|
-
-Above is an illustration of the Gibbs free energy calculation using the component contribution package. The color-coded arrows from red (best) to blue (worst) show the best and worst-performing reactions.
 
 Input
 -----
@@ -78,7 +71,7 @@ Project Links
 Version
 ----------
 
-v1.1
+v0.1
 
 Authors
 -------
@@ -98,6 +91,18 @@ Acknowledgments
 
 ]]></help>
   <citations>
+    <citation type="bibtex">
+@article{noor2014pathway,
+  title={Pathway thermodynamics highlights kinetic obstacles in central metabolism},
+  author={Noor, Elad and Bar-Even, Arren and Flamholz, Avi and Reznik, Ed and Liebermeister, Wolfram and Milo, Ron},
+  journal={PLoS Comput Biol},
+  volume={10},
+  number={2},
+  pages={e1003483},
+  year={2014},
+  publisher={Public Library of Science}
+}
+    </citation>
     <citation type="bibtex">
 @article{noor2013consistent,
   title={Consistent estimation of Gibbs energy using component contributions},

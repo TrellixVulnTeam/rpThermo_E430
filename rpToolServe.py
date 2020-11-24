@@ -14,57 +14,24 @@ import shutil
 import logging
 
 sys.path.insert(0, '/home/')
-import rpTool as rpThermo
+import rpEquilibrator
 import rpSBML
-import rpCache
-
-
-logging.basicConfig(
-    #level=logging.DEBUG,
-    level=logging.WARNING,
-    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S',
-)
-
-
-##
-#
-#
-def singleThermo_mem(rpthermo, member_name, rpsbml_string, pathway_id):
-    #open one of the rp SBML files
-    rpsbml = rpSBML.rpSBML(member_name, libsbml.readSBMLFromString(rpsbml_string))
-    rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
-    return libsbml.writeSBMLToString(rpsbml.document).encode('utf-8')
-
-
-##
-#
-#
-def runThermo_mem(rpthermo, inputTar, outTar, pathway_id):
-    #loop through all of them and run FBA on them
-    with tarfile.open(fileobj=outTar, mode='w:gz') as tf:
-        with tarfile.open(fileobj=inputTar, mode='r') as in_tf:
-            for member in in_tf.getmembers():
-                if not member.name=='':
-                    data = singleThermo_mem(rpthermo,
-                            member.name,
-                            in_tf.extractfile(member).read().decode("utf-8"),
-                            pathway_id)
-                    fiOut = io.BytesIO(data)
-                    info = tarfile.TarInfo(member.name)
-                    info.size = len(data)
-                    tf.addfile(tarinfo=info, fileobj=fiOut)
-
-
 
 
 ###################### Multi ###############
 
-
-## Seperate an array into equal lengths
-#
-#
 def chunkIt(seq, num):
+    """Seperate an array into equal lengths
+
+    :param seq: The arrray to seperate
+    :param num: The number of chunks to seperate the array into
+
+    :type seq: list
+    :type num: int
+
+    :rtype: list
+    :return: 2D list of chunks
+    """
     avg = len(seq) / float(num)
     out = []
     last = 0.0
@@ -74,24 +41,42 @@ def chunkIt(seq, num):
     return out
 
 
-## Less memory effecient than the _hdd method but faster
-#
-#
-def singleThermo(sbml_paths, pathway_id, tmpOutputFolder):
-    rpcache = rpCache.rpCache()
-    rpthermo = rpThermo.rpThermo()
-    #rpthermo.kegg_dG = rpcache.kegg_dG
-    #rpthermo.cc_preprocess = rpcache.cc_preprocess
-    rpthermo.kegg_dG = rpcache.getKEGGdG()
-    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
+def singleThermo(sbml_paths, pathway_id, tmpOutputFolder, ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a list of rpSBML input files, perform thermodynamics analysis. Less memory effecient than the _hdd method but faster
+
+    :param sbml_paths: The list of rpSBML paths passed to calculate thermodynamics
+    :param pathway_id: The id of the heterologous pathway of interest
+    :param tmpOutputFolder: The path to the output folder to write the result rpSBML file
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type sbml_paths: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k, stdev_factor=stdev_factor)
     for sbml_path in sbml_paths:
-        file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
-        rpsbml = rpSBML.rpSBML(file_name)
-        rpsbml.readSBML(sbml_path)
-        rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+        logging.debug('Calculating the thermodynamics of the pathway '+str(pathway_id)+' for the file: '+str(sbml_path))
+        file_name = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+        rpsbml = rpSBML.rpSBML(file_name, path=sbml_path)
+        rpequilibrator.rpsbml = rpsbml
+        res = rpequilibrator.pathway(pathway_id, True) #ignore the results because written in SBML file
         rpsbml.writeSBML(tmpOutputFolder)
         rpsbml = None
+    return True
 
+''' Seems like subprocess does not play well with multiprocessing
 ### concurent
 
 import concurrent.futures
@@ -99,7 +84,10 @@ import concurrent.futures
 ## Multiprocessing implementation of the thermodynamics package
 #
 #
-def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    rpcache = rpCache.rpCache()
+    cc_preprocess = rpcache.getCCpreprocess()
+    kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -112,7 +100,7 @@ def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='
                 jobs = {}
                 #split the files "equally" between all workers
                 for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder)] = s_l
+                    jobs[executor.submit(singleThermo, s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k)] = s_l
                 for future in concurrent.futures.as_completed(jobs):
                     f_n = jobs[future]
                     try:
@@ -124,7 +112,7 @@ def runThermo_multi_concurrent(inputTar, outputTar, num_workers=10, pathway_id='
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-                    file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     file_name += '.sbml.xml'
                     info = tarfile.TarInfo(file_name)
                     info.size = os.path.getsize(sbml_path)
@@ -138,7 +126,10 @@ import multiprocessing
 ## Multiprocessing implementation of the thermodynamics package
 #
 #
-def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
+def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    rpcache = rpCache.rpCache()
+    cc_preprocess = rpcache.getCCpreprocess()
+    kegg_dG = rpcache.getKEGGdG()
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -150,7 +141,7 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
             ### construct the processes list and start
             processes = []
             for s_l in chunkIt(glob.glob(tmpInputFolder+'/*'), num_workers):
-                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder,))
+                p = multiprocessing.Process(target=singleThermo, args=(s_l, pathway_id, tmpOutputFolder, kegg_dG, cc_preprocess, ph, ionic_strength, pMg, temp_k))
                 processes.append(p)
                 p.start()
             #wait for all to finish
@@ -161,20 +152,43 @@ def runThermo_multi_process(inputTar, outputTar, num_workers=10, pathway_id='rp_
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-                    file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    file_name = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     file_name += '.sbml.xml'
                     info = tarfile.TarInfo(file_name)
                     info.size = os.path.getsize(sbml_path)
                     ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
     return True
+'''
+
 
 ############################# single core ##########################
 
-def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
-    rpcache = rpCache.rpCache()
-    rpthermo = rpThermo.rpThermo()
-    rpthermo.kegg_dG = rpcache.getKEGGdG()
-    rpthermo.cc_preprocess = rpcache.getCCpreprocess()
+def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15):
+    """Given a tar input file, perform thermodynamics analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
     with tempfile.TemporaryDirectory() as tmpOutputFolder:
         with tempfile.TemporaryDirectory() as tmpInputFolder:
             tar = tarfile.open(inputTar, mode='r')
@@ -184,10 +198,11 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
                 logging.error('Input file is empty')
                 return False
             for sbml_path in glob.glob(tmpInputFolder+'/*'):
-                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '')
-                rpsbml = rpSBML.rpSBML(fileName)
-                rpsbml.readSBML(sbml_path)
-                rpthermo.pathway_drG_prime_m(rpsbml, pathway_id)
+                logging.debug('Passing the sbml file: '+str(sbml_path))
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '')
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                rpequilibrator.rpsbml = rpsbml
+                res = rpequilibrator.pathway(pathway_id, True) #ignore the results since written to SBML file
                 rpsbml.writeSBML(tmpOutputFolder)
                 rpsbml = None
             if len(glob.glob(tmpOutputFolder+'/*'))==0:
@@ -195,7 +210,7 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
                 return False
             with tarfile.open(outputTar, mode='w:gz') as ot:
                 for sbml_path in glob.glob(tmpOutputFolder+'/*'):
-                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', ''))
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
                     fileName += '.sbml.xml'
                     info = tarfile.TarInfo(fileName)
                     info.size = os.path.getsize(sbml_path)
@@ -203,20 +218,144 @@ def runThermo_hdd(inputTar, outputTar, pathway_id='rp_pathway'):
     return True
 
 
+def runMDF_hdd(inputTar, outputTar, pathway_id='rp_pathway', thermo_id='dfG_prime_o', fba_id='fba_obj_fraction', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a tar input file, perform MDF analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+    :param thermo_id: The id of the thermodynamics id (Default: dfG_prime_o)
+    :param fba_id: The id of the FBA value (Default: fba_obj_fraction)
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
+    with tempfile.TemporaryDirectory() as tmpInputFolder:
+        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+            tar = tarfile.open(inputTar, mode='r')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                logging.debug('=========== '+str(sbml_path)+' ============')
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '') 
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                rpequilibrator.rpsbml = rpsbml
+                res = rpequilibrator.MDF(pathway_id, thermo_id, fba_id, stdev_factor, True) #ignore the results since written to SBML file
+                #ignore res since we are passing write to SBML
+                rpsbml.writeSBML(tmpOutputFolder)
+                rpsbml = None
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:gz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', ''))
+                    fileName += '.sbml.xml'
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
+
+
+def runEqSBtab_hdd(inputTar, outputTar, pathway_id='rp_pathway', fba_id=None, thermo_id='dfG_prime_o', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    """Given a tar input file, perform MDF analysis for each rpSBML file.
+
+    :param inputTar: The path to the input TAR file
+    :param outputTar: The path to the output TAR file
+    :param pathway_id: The id of the heterologous pathway of interest (Default: rp_pathway)
+    :param fba_id: The id of the FBA value. Default sets all FBA values to 1.0 and if specified (Default: None)
+    :param thermo_id: The id of the thermodynamics id (Default: dfG_prime_o)
+    :param ph: The pH of the host organism (Default: 7.0)
+    :param ionic_strength: Ionic strenght of the host organism (Default: 200.0)
+    :param pMg: The pMg of the host organism (Default: 10.0)
+    :param temp_k: The temperature of the host organism in Kelvin (Default: 298.15)
+    :param stdev_factor: The standard deviation factor to calculate MDF (Default: 1.96)
+
+    :type inputTar: str
+    :type outputTar: str
+    :type pathway_id: str
+    :type tmpOutputFolder: str
+    :type ph: float
+    :type ionic_strength: float
+    :type pMg: float
+    :type temp_k: float
+    :type stdev_factor: float
+
+    :rtype: bool
+    :return: Success or failure of the function
+    """
+    rpequilibrator = rpEquilibrator.rpEquilibrator(ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k)
+    with tempfile.TemporaryDirectory() as tmpInputFolder:
+        with tempfile.TemporaryDirectory() as tmpOutputFolder:
+            tar = tarfile.open(inputTar, mode='r')
+            tar.extractall(path=tmpInputFolder)
+            tar.close()
+            if len(glob.glob(tmpInputFolder+'/*'))==0:
+                logging.error('Input file is empty')
+                return False
+            for sbml_path in glob.glob(tmpInputFolder+'/*'):
+                logging.debug('=========== '+str(sbml_path)+' ============')
+                fileName = sbml_path.split('/')[-1].replace('.sbml', '').replace('.xml', '').replace('.rpsbml', '').replace('_rpsbml', '') 
+                rpsbml = rpSBML.rpSBML(fileName, path=sbml_path)
+                rpequilibrator.rpsbml = rpsbml
+                status = rpequilibrator.toNetworkSBtab(os.path.join(tmpOutputFolder, fileName+'.tsv'), pathway_id, thermo_id, fba_id, stdev_factor)
+                rpsbml = None
+            if len(glob.glob(tmpOutputFolder+'/*'))==0:
+                logging.error('rpThermo has not produced any results')
+                return False
+            with tarfile.open(outputTar, mode='w:gz') as ot:
+                for sbml_path in glob.glob(tmpOutputFolder+'/*'):
+                    fileName = str(sbml_path.split('/')[-1])
+                    info = tarfile.TarInfo(fileName)
+                    info.size = os.path.getsize(sbml_path)
+                    ot.addfile(tarinfo=info, fileobj=open(sbml_path, 'rb'))
+    return True
+    
+
+""" DEPRECATED: only useful when using multiprocessing
 ##
 #
 #
-def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway'):
-    if num_workers<=0:
-        logging.error('Cannot have less or 0 workers')
-        return False
-    elif num_workers>20:
-        logging.error('20 or more is a little too many number of workers')
-        return False
-    elif num_workers==1:
-        runThermo_hdd(inputTar, outputTar, pathway_id)
-    else:
-        #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
-        runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
-
-
+#def main(inputTar, outputTar, num_workers=10, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+def main_thermo(inputTar, outputTar, pathway_id='rp_pathway', ph=7.0, ionic_strength=200, pMg=10.0, temp_k=298.15, stdev_factor=1.96):
+    with tempfile.TemporaryDirectory() as tmpCountFolder:
+        num_models = 0
+        tar = tarfile.open(inputTar, mode='r')
+        tar.extractall(path=tmpCountFolder)
+        num_models = len(glob.glob(tmpCountFolder+'/*'))
+        tar.close()
+        if num_workers<=0:
+            logging.error('Cannot have less or 0 workers')
+            return False
+        return runThermo_hdd(inputTar, outputTar, pathway_id=pathway_id, ph=ph, ionic_strength=ionic_strength, pMg=pMg, temp_k=temp_k, stdev_factor=stdev_factor):
+        ''' Seems like subprocessing + Equilibrator do not play well together -- needs further testing
+        #TODO: count the number of models in the tar and if <num_workers then choose that
+        if num_models==0:
+            logging.warning('The input tar file seems to be empty') 
+            return False
+        if num_workers==1 or num_models==1:
+            return runThermo_hdd(inputTar, outputTar, pathway_id)
+        else:
+            #runThermo_multi_concurrent(inputTar, outputTar, num_workers, pathway_id)
+            return runThermo_multi_process(inputTar, outputTar, num_workers, pathway_id)
+        '''
+"""

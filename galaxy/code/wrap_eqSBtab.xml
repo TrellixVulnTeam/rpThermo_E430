@@ -1,5 +1,5 @@
-<tool id="rpThermo" name="Thermodynamics" version="0.1">
-  <description>Calculate the formation energy of chemical species and the Gibbs free energy of their reactions and pathways in an SBML</description>
+<tool id="eqSBtab" name="Equilibrator Pathway SBtab" version="0.1">
+  <description>Generate the Equilibrator SBtab of rpSBML pathways</description>
   <requirements>
 		<container type="docker">brsynth/rpthermo-standalone:v2</container>
   </requirements>
@@ -9,7 +9,7 @@
 		<regex match="ERROR:root:ChemAxon" level="warning" />
 	</stdio>
   <command detect_errors="exit_code"><![CDATA[
-    '$__tool_directory__/tool_rpThermo.py' -input '$input_type.input' -output '$output' -pathway_id '$adv.pathway_id' -input_format '$input_type.input_format' -ph '$adv.ph' -ionic_strength '$adv.ionic_strength' -pMg '$adv.pMg' -temp_k '$adv.temp_k' 
+    '$__tool_directory__/tool_eqSBtab.py' -input '$input_type.input' -input_format '$input_type.input_format' -output '$output' -pathway_id '$adv.pathway_id' -fba_id '$adv.fba_id' -thermo_id '$adv.thermo_id' -ph '$adv.ph' -ionic_strength '$adv.ionic_strength' -pMg '$adv.pMg' -temp_k '$adv.temp_k' -stdev_factor '$adv.stdev_factor'
   ]]></command>
   <inputs>
     <conditional name="input_type">
@@ -26,10 +26,13 @@
     </conditional>
     <section name="adv" title="Advanced Options" expanded="false">
       <param name="pathway_id" type="text" value="rp_pathway" label="SBML heterologous pathway ID" />
+      <param name="fba_id" type="text" value="fba_obj_fraction" label="FBA results objective ID" />
+      <param name="thermo_id" type="text" value="dfG_prime_o" label="Thermodynamics results ID" />
       <param name="ph" type="float" value="7.5" label="Compartment PH of the pathway" />
       <param name="ionic_strength" type="float" value="200.0" label="Compartment ionic strength of the pathway" />
       <param name="pMg" type="float" value="10.0" label="Compartment pMg of the pathway" />
       <param name="temp_k" type="float" value="298.15" label="Compartment temperature in Kelvin" />
+      <param name="stdev_factor" type="float" value="1.96" label="Standard Deviation Factor" />
     </section>
   </inputs>
   <outputs>
