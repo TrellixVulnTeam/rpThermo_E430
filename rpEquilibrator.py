@@ -47,7 +47,8 @@ class rpEquilibrator:
         self.ionic_strength = ionic_strength
         self.pMg = pMg
         self.temp_k = temp_k
-        self.mnx_default_conc = json.load(open('data/mnx_default_conc.json', 'r'))
+        #self.mnx_default_conc = json.load(open('data/mnx_default_conc.json', 'r'))
+        self.mnx_default_conc = json.load(open(os.path.join(os.path.dirname(os.path.abspath( __file__ )), 'data', 'mnx_default_conc.json'), 'r'))
         self.rpsbml = rpsbml
         self.calc_cmp = {}
     
@@ -93,7 +94,7 @@ class rpEquilibrator:
             miriam_dict = self.rpsbml.readMIRIAMAnnotation(annot)
             self.logger.debug('miriam_dict: '+str(miriam_dict))
             if not miriam_dict:
-                self.logger.error('The object annotation does not have any MIRIAM entries')
+                self.logger.warning('The object annotation does not have any MIRIAM entries')
                 return False
             if 'kegg' in miriam_dict:
                 if miriam_dict['kegg']:
@@ -536,7 +537,7 @@ class rpEquilibrator:
                 spe = self.rpsbml.model.getSpecies(spe_id)
                 miriam_dict = self.rpsbml.readMIRIAMAnnotation(spe.getAnnotation())
                 if not miriam_dict:
-                    self.logger.error('The object annotation does not have any MIRIAM entries')
+                    self.logger.warning('The object annotation does not have any MIRIAM entries')
                     return False
                 iden_str = None
                 if 'kegg' in miriam_dict:

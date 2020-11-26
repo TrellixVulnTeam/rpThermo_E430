@@ -6,12 +6,10 @@ input_cache/
 tool_rpThermo.py
 cache/
 rpSBML.py
-test/
 input_cache.tar.xz
 *.ipynb
 license.cxl
 rpCache.py
 docker_install_marvin.txt
-test/
 marvin_linux_20.9.deb
 OLD/
